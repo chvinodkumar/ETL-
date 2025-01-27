@@ -1,0 +1,35 @@
+import os
+from datetime import datetime
+import argparse
+import json
+import requests
+import io
+import pandas as pd
+def auth(url,headers):
+    response = requests.get(url, headers)
+    return response
+
+def main(config):
+    print("Script started")
+    response = auth(config["url"], headers=config["headers"])
+    # if response.status_code == 200:
+    #     res_stream = io.BytesIO(response.content)
+    #     res_stream.seek(0)
+    res = response.encoding('utf-8', errors='ignore')
+    data = pd.read_json(res)
+
+    df = pd.DataFrame(data)
+    print(data)
+
+
+if __name__ == "__main__":
+    start_time= datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+    parser = argparse.ArgumentParser(description="Download data and save to a file.")
+    parser.add_argument('--infile', required=True, help="JSON file with configuration", type=argparse.FileType('r'))
+    args = parser.parse_args()
+    config_file = args.infile
+    config = json.load(config_file)
+    try:
+        main(config)
+    except Exception as e:
+        print(e)

@@ -1,0 +1,17 @@
+{
+    "source": "Smartsheet",
+    "environment": "US PROD",
+    "sheet_id": "7355258683844484",
+    "url": "https://api.smartsheet.com/2.0/sheets/",
+    "auth_token": "2GWV1KIIxRjwDfGC2T413sg1YtMo4KKOtzyeU",
+    "ingestion_audit_field": "ingestion_timestamp",
+    "redshift_config": "/root/.aws/redshift_connection.ini",
+    "redshift_profile": "Connections_PROD",
+    "log_file": "/data-ingestion/custom_scripts/isc_box_file/log/",
+    "replace_space_in_column_name": "n",
+    "schema_name": "isc_box_file_fr",
+    "main_table": "customs_global_landscape",
+    "data_origin": "n",
+    "utils_path": "/data-ingestion/custom_scripts/global/utils/",
+    "load_type": "truncate_and_load"
+}

@@ -1,0 +1,17 @@
+{
+    "source": "API",
+    "environment": "innovation",
+        "file_name":"welcomecdf.xlsx",
+        "file_type":"excel",
+        "filepath": "/data-ingestion/custom_scripts/global/api/",
+    "url": "https://ngpwvb.files.cmp.optimizely.com/download/09d2dc668c5011eea2a6764a8be6bc52",
+    "headers": {
+        "Cookie": "welcome.sid=s%3A5f2113709e8b11eebde551242a6ac51dd24415412ef346c992f1291ee40695aa.%2BXEKXWaOj%2BZx72TZSvRp%2FzbZYLkhW7hdw8hU5dau%2FXg"
+    },
+    "redshift_config": "/home/hvr2/.aws/redshift_connection.ini",
+    "redshift_profile": "Connections_INNOVATION",
+    "log_file": "/data-ingestion/custom_scripts/cdf/log/",
+    "schema_name": "flatfile_fr",
+    "main_table_name": "welcome",
+    "utils_path": "/data-ingestion/custom_scripts/global/utils"
+}

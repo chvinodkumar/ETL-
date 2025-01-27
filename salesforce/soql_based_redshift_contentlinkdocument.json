@@ -1,0 +1,18 @@
+{
+        "config_path":"/root/.aws/redshift_connection.ini",
+        "connection_profile":"Connections_PROD",
+        "utils_path":"/data-ingestion/custom_scripts/global/",
+        "environment":"prod",
+        "source":"salesforce",
+        "table_name":"contentdocumentlink",
+        "soql_query":"SELECT Id,LinkedEntityId,ContentDocumentId,IsDeleted,SystemModstamp,ShareType,Visibility from ContentDocumentLink where LinkedEntityId IN (select id from opportunity_extension__c where recordtypeid ='012Ki000000bpI5IAI')",
+        "instance":"prod",
+        "schema_name":"salesforce_fr",
+        "pagination":"N",
+        "incremental_column":"systemmodstamp",
+        "log_path":"/data-ingestion/custom_scripts/salesforce/isc/log/",
+        "load_type":"incremental"
+}
+
+
+

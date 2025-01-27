@@ -1,0 +1,120 @@
+{
+    "username": "WD_USERNAME",
+    "password": "WD_PASSWORD",
+    "bucket_name":"HR_BUCKET",
+    "profile_name":"HR_BUCKET_PROFILE",
+    "email_stake_holders":"Health_ODP_Ingestion_Alerts@ge.com",
+    "integration_url": "https://wd5-services1.myworkday.com/ccx/service/gehc/Integrations/v41.1",
+    "download_url": "https://wd5-services1.myworkday.com/ccx/cc-blobitory/gehc/",
+    "output_path":  "OUTPUT_PATH",
+    "soap_data_path": "SOAP_DATA_PATH",
+    "proxies" : {
+              "http"  : "http://PITC-Zscaler-Americas-Alpharetta3PR.proxy.corporate.ge.com:80",
+              "https" : "http://PITC-Zscaler-Americas-Alpharetta3PR.proxy.corporate.ge.com:80"
+            },
+    "ssl_cert_path": "/data-ingestion/Scripts/Config/HR-Workday/CERT.pem",
+    "integrations": [
+        "INT0373HR3LeaveTypesSetupEIBOutbound",
+        "INT0375HR3WorkerLeaveofAbsenceEIBOutbound",
+        "INT0386HR3PersonDataLegalNameEIBOutbound",
+        "INT0387HR3PersonDataHireServiceDatesEIBOutbound",
+        "INT0388HR3PersonDataTerminationEIBOutbound",
+        "INT0389HR3AllActiveandFutureHireEmployeesSalaryPlansEIBOutbound",
+        "INT0390HR3TerminatedEmployeesSalaryPlansEIBOutbound",
+        "INT0393HR3EmployeeEmergencyPhoneDataEIBOutbound",
+        "INT0397HR3PersonDataPersonalInformationEIBOutbound",
+        "INT0398_INT0586_HR3_Worker_Address_Merge_Outbound/INT0398_INT0586_HR3_Worker_Address_Merge_Outbound/StartHere",
+        "INT0400HR3OrganizationsSetup",
+        "INT0401HR3PAYGROUPSETUPEIBOUTBOUND",
+        "INT0402HR3LocationsDTOutbound",
+        "INT0403HR3WorkerOneTimePaymentsEIBOutbound",
+        "INT0404HR3AllActiveandFutureHireEmployeesSalaryEIBOutbound",
+        "INT0405HR3JobRequisitionOutboundDT",
+        "INT0406HR3WorkerAllowanceandBonusEIBOutbound",
+        "INT0407HR3OrganizationHierarchyEIBOutbound",
+        "INT0408HR3DispositionOrganizationAssignmentEIBOutbound",
+        "INT0409HR3JobRequisitionPositionCCOutboundDT",
+        "INT0410HR3JOBSETUPDTOutbound",
+        "INT0413HR3EMPLOYEECONTRACTEIBOUTBOUND",
+        "INT0416HR3CompensationGradeEIBOutbound",
+        "INT0423HR3LocationHierarchiesEIBOutbound",
+        "INT0424HR3PositionRestrictionMultiInstanceEIBOutbound",
+        "INT0425HR3WorkerChangeJobEIBOutbound",
+        "INT0426HR3WorkerMiscellaneousFieldsEIBOutbound",
+        "INT0428HR3CompensationPackageEIBOutbound",
+        "INT0429HR3WorkerPaymentElectionEIBOutbound",
+        "INT0430HR3CompensationPlans",
+        "INT0431HR3WorkerinternationalassignmentEIBOutbound",
+        "INT0432HR3DailyWorkScheduleActionEvent",
+        "INT0433HR3OtherCustomOrganizationsEIBOutbound",
+        "INT0434HR3WorkerPeoplesoftPayrollInfoEIBOutbound",
+        "INT0435HR3CustomOrganizationAcquisitionEIBOutbound",
+        "INT0436HR3SupervisoryOrganizationSetupEIBOutbound",
+        "INT0438HR3JobProfileSetupMultiInstanceEIBOutbound",
+        "INT0439HR3WorkerEndAdditionalJobsEIBOutbound",
+        "INT0440HR3WorkerAdditionalDataEIBOutbound",
+        "INT0441HR3CompensationGradeProfileSteps",
+        "INT0443HR3WorkerAcqnandDspnorgassignmentEIBOutbound",
+        "INT0445HR3JobCandidateEIBOutbound",
+        "INT0446HR3WorkerBusinessTitleEIBOutbound",
+        "INT0447HR3CompensationOneTimePaymentPlan",
+        "INT0448WorkerOrganizationDT",
+        "INT0449HR3WorkerEducationEIBOutbound",
+        "INT0450HR3WorkerEmergencyEmailInformationEIBOutbound",
+        "INT0451HR3PositionsSetupEIBOutbound",
+        "INT0452HR3JobFamilyEIBOutbound",
+        "INT0453HR3WorkerPayGroupEIBOutbound",
+        "INT0454HR3COMPENSATIONGRADEEIBOUTBOUND",
+        "INT0455HR3EmployeeEmergencyAddressDataEIBOutbound",
+        "INT0457SecurityRoleOutbound",
+        "INT0458HR3JobApplicationEIBOutbound",
+        "INT0468HR3JobPostingsEIBOutbound",
+        "INT0478HR3WorkerJobHistory",
+        "INT0479HR3WorkerUnionMembershipEIBOutbound",
+        "INT0480HR3WorkerVacationHoliday",
+        "INT0481HR3WorkerCollectiveAgreementDataEIBOutbound",
+        "INT0482HR3WorkerStockGrantsEIBOutbound",
+        "INT0499HR3WorkerTrainingDetailsEIBOutbound",
+        "INT0500HR3WorkerHireCorrectedDateEIBOutbound",
+        "INT0529HR3UserBasedSecurityGroupOutboundEIB",
+        "INT0531HR3WorkerIdentifiersDTOutbound",
+        "INT0532HR3WorkerOtherIDandBackgroundcheckDTOutbound",
+        "INT0533HR3WorkerHomeWorkPhoneEmailDTOutbound",
+        "INT0569HR3TerminatedEmployeesSalaryEIBOutbound",
+        "INT0579HR3AllEmployeesGuidelinesEIBOutbound",
+        "INT0583HR3WorkerLeadershipProgramSecondaryjobEIBOutbound",
+        "INT0590HR3ContingentWorkersInfoEIBOutbound",
+        "INT0613HR3WorkerCareerDataEIBOutbound",
+        "INT0726HR3WorkerManagerChangesEIBOutbound",
+        "INT0749HR3LegacyPeoplesoftDeptSetupInfoEIBOutbound"
+    ],
+    "logging": {
+        "version": 1,
+        "formatters": {
+            "wd": {
+                "format": "Tool - %(asctime)s - %(levelname)s - %(message)s"
+            }
+        },
+        "handlers": {
+            "console": {
+                "class": "logging.StreamHandler",
+                "formatter": "wd",
+                "level": "DEBUG"
+            },
+            "file": {
+                "class": "logging.handlers.RotatingFileHandler",
+                "formatter": "wd",
+                "filename": "/data-ingestion/Scripts/Python/HR-Workday/wd_logs.log",
+                "mode": "w",
+                "level": "DEBUG"
+            }
+        },
+        "root": {
+            "level": "DEBUG",
+            "handlers": [
+                "file", "console"
+            ]
+        }
+    }
+}
+

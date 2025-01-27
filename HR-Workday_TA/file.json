@@ -1,0 +1,51 @@
+{
+    "username": "WD_USERNAME",
+    "password": "WD_PASSWORD",
+    "bucket_name":"HR_BUCKET",
+    "profile_name":"HR_BUCKET_PROFILE",
+    "email_stake_holders":"cdoodpingestion-ams@ge.com",
+    "integration_url": "https://wd5-services1.myworkday.com/ccx/service/gehc/Integrations/v41.1",
+    "download_url": "https://wd5-services1.myworkday.com/ccx/cc-blobitory/gehc/",
+    "output_path":  "OUTPUT_PATH",
+    "soap_data_path": "SOAP_DATA_PATH",
+    "proxies" : {
+              "http"  : "http://PITC-Zscaler-Americas-Alpharetta3PR.proxy.corporate.ge.com:80",
+              "https" : "http://PITC-Zscaler-Americas-Alpharetta3PR.proxy.corporate.ge.com:80"
+            },
+    "ssl_cert_path": "CERT.pem",
+    "integrations": [
+        "INT5413-CRTARecruitingCycleTimetoVerbalOfferDetailsEIB",
+        "INT5414-CRTAFilledVolumeDetailsEIB",
+        "INT5415-CRTARequisitionDetailsEIB",
+        "INT5416-CRPRTACandidateDiversityEIB",
+        "INT5417-CRJobRequisitionsAcceptanceDeclineOfferEIB"
+    ],
+    "logging": {
+        "version": 1,
+        "formatters": {
+            "wd": {
+                "format": "Tool - %(asctime)s - %(levelname)s - %(message)s"
+            }
+        },
+        "handlers": {
+            "console": {
+                "class": "logging.StreamHandler",
+                "formatter": "wd",
+                "level": "DEBUG"
+            },
+            "file": {
+                "class": "logging.handlers.RotatingFileHandler",
+                "formatter": "wd",
+                "filename": "/data-ingestion/Scripts/Python/HR-Workday_TA/wd_logs.log",
+                "mode": "w",
+                "level": "DEBUG"
+            }
+        },
+        "root": {
+            "level": "DEBUG",
+            "handlers": [
+                "file", "console"
+            ]
+        }
+    }
+}

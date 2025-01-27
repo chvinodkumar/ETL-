@@ -1,0 +1,27 @@
+{
+  "source" : "MARKITO",
+  "environment": "innovation",
+  "file_name":"programIDs.txt",
+  "file_type":"txt",
+  "file_pathProgramId": "/data/nifi/marketo_programs/global/data/programIDs.txt",
+  "proxyDict" :
+  {
+    "http": "PITC-Zscaler-EMEA-London3PR.proxy.corporate.ge.com:80",
+    "https": "PITC-Zscaler-EMEA-London3PR.proxy.corporate.ge.com:80"
+  },
+  "maxReturn" : "200",
+  "client_id" : "7eac73fc-81cf-4510-bcb7-2630d12c00b8",
+  "client_secret" : "HT9kmDSKJjyce6PkRvZ2vKylLP3gazpV",
+  "url_cred" : "https://005-SHS-767.mktorest.com/identity/oauth/token?client_id={client_id}&client_secret={client_secret}&grant_type=client_credentials",
+  "url" : "https://005-SHS-767.mktorest.com/rest/asset/v1/programs.json?access_token={access_token}&maxReturn={maxReturn}&offset={stroff}&earliestUpdatedAt={pre_date}T00:00:00-05:00&latestUpdatedAt={curt_date}T00:00:00-05:00",
+  "offset" : "0",
+  "redshift_config": "/home/hvr2/.aws/redshift_connection.ini",
+  "redshift_profile": "Connections_INNOVATION",
+  "schema_name": "",
+  "main_table_name": "",
+  "log_file": "/data-ingestion/custom_scripts/",
+  "s3_partition": "y",
+  "s3_prefix_name": "/",
+  "s3_bucket_name": "odp-us-innovation-ent-raw",
+  "s3_profile": "innovation"
+}

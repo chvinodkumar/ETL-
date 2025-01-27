@@ -1,0 +1,14 @@
+{
+    "source" : "bfe_log_tables_delete_script",
+    "environment" : "dev",
+    "redshift_config": "/home/hvr2/.aws/redshift_connection.ini",
+    "redshift_profile": "Connections_INNOVATION",
+    "main_table_primary_key": "revrec_id",
+    "log_table_primary_key": "revrec_id",
+    "schema_name": "bfe_smax_fr",
+    "main_table": "bfe_rev_rec",
+    "log_table": "bfe_rev_rec_logs",
+    "log_file_path": "/data-ingestion/hvr_plugins/bfe/log/",
+    "utils_path": "/data-ingestion/custom_scripts/global/utils/",
+    "load_type": "log_based_soft_deletes"
+}

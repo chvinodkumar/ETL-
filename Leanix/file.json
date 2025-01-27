@@ -1,0 +1,49 @@
+{
+  "table_name": "hc_dtb_leanix_app_dept_org_f",
+  "schema_name": "leanix_fr",
+  "api_token": "TrnnhGuRsCL4wBL3twQMmLrbefjYWvhOcYqGh2YE",
+  "config_path": "/home/hvr/.aws/redshift_connection.ini",
+  "connection_profile": "Connections_PROD",
+  "auth_url": "https://gehealthcare.leanix.net/services/mtm/v1/oauth2/token",
+  "request_url": "https://gehealthcare.leanix.net/services/pathfinder/v1/graphql",
+  "proxies": {
+    "http": "http://PITC-Zscaler-Americas-Alpharetta3PR.proxy.corporate.ge.com:80",
+    "https": "http://PITC-Zscaler-Americas-Alpharetta3PR.proxy.corporate.ge.com:80"
+  },
+  "query": "{   allFactSheets(factSheetType: organization, first: 10000) {     pageInfo {       startCursor       endCursor       hasNextPage     }     totalCount     edges {       node {         ... on organization {           id           type           name           displayName           category           BusinessFunction: relToParent {             edges {               node {                 factSheet {                   name                 }               }             }           }           externalId {             externalId           }           tags {             name           }           subscriptions {             edges {               node {                 roles {                   name                 }                 user {                   displayName                   email                 }               }             }           }           lifecycle {             CurrentState: asString             phases {               Stage: phase               Date: startDate             }           }         }       }     }   } }",
+  "columns": {
+    "id": { "name": "id", "datatype": "varchar" },
+    "type": { "name": "type", "datatype": "varchar" },
+    "name": { "name": "name", "datatype": "varchar" },
+    "displayName": { "name": "displayName", "datatype": "varchar" },
+    "category": { "name": "category", "datatype": "varchar" },
+    "externalId_externalId": { "name": "externalId", "datatype": "varchar" },
+    "tags_0_name": { "name": "tags_Business_Area", "datatype": "varchar" },
+    "BusinessFunction_edges_0_node_factSheet_name": {
+      "name": "relToParent",
+      "datatype": "varchar"
+    },
+    "subscriptions_Executive_Sponsor": {
+      "name": "subscriptions_RESPONSIBLE_Executive_Sponsor",
+      "datatype": "varchar"
+    },
+    "subscriptions_Business_Risk_Leader": {
+      "name": "subscriptions_RESPONSIBLE_Risk_Leader",
+      "datatype": "varchar"
+    },
+    "subscriptions_Organization_Leader": {
+      "name": "subscriptions_RESPONSIBLE_Organization_Leader",
+      "datatype": "varchar"
+    },
+    "lifecycle_CurrentState": {
+      "name": "lifecycle_asString",
+      "datatype": "varchar"
+    },
+    "lifecycle_active": { "name": "lifecycle_active", "datatype": "varchar" },
+    "lifecycle_endOfLife": {
+      "name": "lifecycle_endOfLife",
+      "datatype": "varchar"
+    }
+  },
+  "email_stack_holders":""
+}

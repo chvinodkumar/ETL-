@@ -1,0 +1,33 @@
+{
+    "table_name": "x_nuvo_eam_rfc_functions",
+    "schema_name": "nvo_fr",
+    "config_path": "/home/hvr/.aws/redshift_connection.ini",
+    "connectionprofile": "Connections_PROD",
+    "AWSPROFILE": "prod",
+    "AWSBUCKET": "odp-us-prod-ent-raw",
+    "filepath": "/home/hvr/data_fabric/",
+    "audit_schema_table": "ingestion_audit.audit_hvr_querybased",
+    "credentials": ["odp_datafabric", "cfAFfa2PIUM"],
+    "min_datetime": ["2016-05-06", "15:44:53"],
+    "primary_key": "sys_id",
+    "referance_columns": [],
+    "column_dtypes": {
+            "point_score": "object",
+    "sys_mod_count": "object",
+    "description": "object",
+    "sys_updated_on": "datetime64",
+    "sys_domain_path": "object",
+    "sys_tags": "object",
+    "sys_class_name": "object",
+    "sys_id": "object",
+    "sys_updated_by": "object",
+    "sys_created_on": "datetime64",
+    "sys_domain":"object",
+    "category": "object",
+    "sys_created_by": "object"
+
+      },
+            "sysparm_query": "ORDERBYsys_updated_on",
+            "limit": 1000,
+            "URL": "https://gehceam.service-now.com/api/now/table"
+    }

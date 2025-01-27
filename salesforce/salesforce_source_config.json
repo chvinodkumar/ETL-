@@ -1,0 +1,20 @@
+{
+        "salesforce":{
+                "uat":"https://gehealthcare-amer--uat.sandbox.my.salesforce.com/services/oauth2/token?grant_type=password&client_id=3MVG99OxTyEMCQ3jLn42JgU9JPwAdumx_vYhisFZjJIXRbeRr7bizGELEUnr8hS2urAldyZ7rnGmmb4qZkmpw&client_secret=92DE5020E1AACE934E5DAE1517C4FE36F2AD740C3611F95B39C700E09629CE19&username=odp.integration@gehc.amer.uat&password=Apttus@2024",
+                "prod":"https://gehealthcare-amer.my.salesforce.com/services/oauth2/token?grant_type=password&client_id=3MVG99OxTyEMCQ3jLn42JgU9JPwAdumx_vYhisFZjJIXRbeRr7bizGELEUnr8hS2urAldyZ7rnGmmb4qZkmpw&client_secret=92DE5020E1AACE934E5DAE1517C4FE36F2AD740C3611F95B39C700E09629CE19&username=odp.integration@gehc.amer&password=odp%23$passw*rd0#$passw*rd0%22"
+                },
+        "servicemax":{
+                "itest":"https://gehealthcare-svc--itest.sandbox.my.salesforce.com/services/oauth2/token?grant_type=password&client_id=3MVG99OxTyEMCQ3jLn42JgU9JPwAdumx_vYhisFZjJIXRbeRr7bizGELEUnr8hS2urAldyZ7rnGmmb4qZkmpw&client_secret=92DE5020E1AACE934E5DAE1517C4FE36F2AD740C3611F95B39C700E09629CE19&username=odpdiuser@gehc.svc.itest&password=MyOdpRocks@01",
+                "prod":"https://gehealthcare-svc.my.salesforce.com/services/oauth2/token?grant_type=password&client_id=3MVG99OxTyEMCQ3jLn42JgU9JPwAdumx_vYhisFZjJIXRbeRr7bizGELEUnr8hS2urAldyZ7rnGmmb4qZkmpw&client_secret=92DE5020E1AACE934E5DAE1517C4FE36F2AD740C3611F95B39C700E09629CE19&username=odpdiuser@gehc.svc&password=MyOdpRocks@01"
+        },
+        "s3_path":{
+                "innovation":["odp-us-innovation-ent-raw/stage/","arn:aws:iam::541574621075:role/odp-us-innovation-ingestion-orchestration-service-role"],
+                "prod":["odp-us-prod-ent-raw/stage/","arn:aws:iam::245792935030:role/odp-us-prod-ingestion-orchestration-service-role"]
+                }
+
+}
+
+
+
+
+
