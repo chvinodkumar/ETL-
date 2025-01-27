@@ -1,0 +1,18 @@
+{
+  "box_id": "267318740859",
+  "targetpath": "/home/hvr2/custom_scripts/box/data/",
+  "connection_profile": "Connections_INNOVATION",
+  "schema_name": "flatfile_fr",
+  "table_name": "gspo_region_hier",
+  "file_name": "Regions_Mapping___International.csv",
+  "file_name2": "Regions_Mapping___International.csv",
+  "file_path": "/home/hvr2/custom_scripts/box/data/",
+  "config_path": "/home/hvr2/.aws/conf.json",
+  "dbconfig_path": "/home/hvr2/.aws/redshift_connection.ini",
+  "dl":"503074874@gehealthcare.com"
+}
+
+
+  "targetpath": "/home/hvr2//home/hvr2/custom_scripts/box/config/data/",
+
+/home/hvr2/custom_scripts/box/config

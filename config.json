@@ -1,0 +1,32 @@
+{
+    "Source":
+        {
+            "id"    : ["6982391310536580","2222874983092100"],
+            "token":"2GWV1KIIxRjwDfGC2T413sg1YtMo4KKOtzyeU",
+            "url":"https://api.smartsheet.com/2.0/sheets/"
+        },
+    "Target":
+        {
+            "config_path" : "/home/hvr/.aws/redshift_connection.ini",
+            "connection_profile" : "Connections_PROD",
+            "datapath" : "/home/hvr/mapping_intercon/data/",
+            "schema_name" : "hdl_regions_icn_pcg_flat_file",
+            "Tablenames" : ["icn_pacing_country_map_f","icn_pacing_country_map_emea_bill_coll_f"],
+            "chunksize" : 1000
+        },
+    "Touchfile":
+    {
+        "Touchfile_required" : "no",
+        "touchfile" : "",
+        "projectname" : "",
+        "s3path" : "",
+        "s3_profile" : ""
+    },
+"logfile" : "/home/hvr/mapping_intercon/main.log",
+"Email_info":
+        {
+            "dl" : "5033272988@ge.com",
+            "subject" : "ODP Innovation : Smartsheet Ingestion : Failure ",
+            "Message_Ingestion" :"Data ingestion from smartsheet to Redshift failed due to this error : Please refer to the logfile path : "
+        }
+}
