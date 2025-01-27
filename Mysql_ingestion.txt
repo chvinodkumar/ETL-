@@ -1,0 +1,210 @@
+[hvr2@ip-10-242-112-153 Mysql_ingestion]$ ll
+total 24
+-rw-rw-r-- 1 hvr2 hvr2 1294 Dec 22 08:32 cert.crt.pem
+-rw-rw-r-- 1 hvr2 hvr2 5396 Dec 28 07:48 Mysql_IMP_TruncateLoad_item_table.py
+-rw-rw-r-- 1 hvr2 hvr2 5199 Dec 25 04:53 Mysql_IMP_TruncateLoad.py
+drwxrwxr-x 4 hvr2 hvr2 4096 Jan 11 04:42 US172982_IMP_Tables
+[hvr2@ip-10-242-112-153 Mysql_ingestion]$ cd US172982_IMP_Tables
+
+======================
+[hvr2@ip-10-242-112-153 Mysql_ingestion]$ cd US172982_IMP_Tables
+[hvr2@ip-10-242-112-153 US172982_IMP_Tables]$ ll
+total 36
+-rw-rw-r-- 1 hvr2 hvr2 1495 Dec 28 08:00 config_1.json
+-rw-rw-r-- 1 hvr2 hvr2 3020 Dec 28 08:02 config_2.json
+-rw-rw-r-- 1 hvr2 hvr2 2054 Dec 28 09:44 config_3.json
+-rw-rw-r-- 1 hvr2 hvr2 1250 Dec 28 08:02 config.json
+drwxrwxr-x 2 hvr2 hvr2  141 Dec 27 11:37 data
+drwxrwxr-x 2 hvr2 hvr2  126 Dec 29 06:00 logs
+-rw-rw-r-- 1 hvr2 hvr2  342 Mar  1 06:40 main.log
+-rw-rw-r-- 1 hvr2 hvr2  751 Dec 25 07:53 master_1.sh
+-rw-rw-r-- 1 hvr2 hvr2  751 Dec 25 07:59 master_2.sh
+-rw-rw-r-- 1 hvr2 hvr2  762 Dec 28 09:42 master_3.sh
+-rw-rw-r-- 1 hvr2 hvr2  749 Dec 25 04:35 master.sh
+[hvr2@ip-10-242-112-153 US172982_IMP_Tables]$ cat master_1.sh
+####################################################
+#Name:Naveen Reddy Marella
+#date:25-12-2023
+#purpose:MYSQL table ingestion to redshift
+#userstory:
+######################################################
+#! /bin/bash
+
+###############################################
+###########to move the directory#########
+################################################
+
+cd /home/hvr2/Mysql_ingestion
+
+#############################################################
+############calling python script############################
+#############################################################
+
+echo "execution started"
+
+python3 /home/hvr2/Mysql_ingestion/Mysql_IMP_TruncateLoad.py /home/hvr2/Mysql_ingestion/US172982_IMP_Tables/config_1.json
+
+echo "execution ended"
+[hvr2@ip-10-242-112-153 US172982_IMP_Tables]$
+============================================================================================================
+drwxrwxr-x 4 hvr2 hvr2 4096 Jan 11 04:42 US172982_IMP_Tables
+[hvr2@ip-10-242-112-153 Mysql_ingestion]$ cat /home/hvr2/Mysql_ingestion/Mysql_IMP_TruncateLoad.py
+import pymysql
+import sys,json,csv
+import configparser
+import pandas as pd
+import os
+import logging
+from datetime import datetime
+from sqlalchemy import create_engine
+from urllib.parse import quote_plus
+
+#passing the arguments
+ARG=sys.argv
+json_path = ARG[1]
+
+try :
+    #reading json data from config path
+    with open(json_path) as p:
+        data=json.load(p)
+
+    Source=data['Source']
+    Target=data['Target']
+
+    #source connection mysql parameters
+    db_user = quote_plus(Source['db_user'])   #'hvr_ro@hcmyp-labor-tracker'
+    db_password = quote_plus(Source['db_password'])  #'MzkvkJ@CTM7G4Me8'
+    db_host = Source['db_host']    #'10.210.40.228'
+    db_port = Source['db_port']    #'3306'
+    db_name = Source['db_name']    #'lt_2006'
+    ssl_args = Source['ssl_args']  #{'ssl_ca': "cert.crt.pem"}
+
+    #Source details
+    source_schema = Source['schema_name']
+
+    #Target Parameters
+    config_path = Target['config_path']
+    connection_profile = Target['connection_profile']
+    schema_name = Target['schema_name']
+    Tablenames = Target['Tablenames'].split(',')
+    datapath = Target['datapath']
+    cols_lst=Target['Tablecols']
+    dl=data['dl']
+    logfile=data['logfile']
+
+    #####mail_info###
+    email_info=data['email_info']
+    subject = email_info['Subject']
+    Message_conn=email_info['Message_conn']
+    Message_ingestion =email_info['Message_ingestion']
+    Message_execution=email_info['Message_execution']
+
+    # Creating the engine without SSL verification
+    def Mysqlconnect():
+        try :
+            engine = create_engine(f"mysql+pymysql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}",connect_args=ssl_args)
+            mysqlconn=engine.connect()
+            return mysqlconn
+        except Exception as e:
+            logging.error(f'Exception while connecting to the source : {e}')
+            os.system(f'echo "{Message_conn}{logfile}" | mailx -s "{subject}" {dl}')
+
+    with open(f'{logfile}', 'a', newline='') as csvfl:
+        write_csv = csv.writer(csvfl, delimiter='|')
+        write_csv.writerow(['\t TimeStamp \t', 'Severity', '\t Message \t'])
+
+    logging.basicConfig(filename=logfile,level=logging.DEBUG, format=('%(asctime)s | %(levelname)s | %(message)s'))
+    logger = logging.getLogger('hvr')
+
+#--------------------- CONFIGUARATION FILE FOR GET THE CONNECTION DETAILS -----------------
+    def read_config_file(filepath, connection):
+        config = configparser.ConfigParser()
+        config.read(filepath)
+        db_name = config[connection]['dbname']
+        user = config[connection]['user']
+        password = config[connection]['password']
+        host = config[connection]['host']
+        port = int(config[connection]['port'])
+        return db_name, user, password, host, port
+
+    DBNAME, USER, PASS, HOST, PORT = read_config_file(config_path, connection_profile)
+
+    #############CREATE THE ENGINE FOR CONNECTING Target##############
+    rsengine = create_engine(f"postgresql://{USER}:{PASS}@{HOST}:{PORT}/{DBNAME}")
+    cur_date= datetime.today()
+
+    try:
+        #reading the data from mysql
+        for Tablename,lst in zip(Tablenames,range(len(Tablenames))):
+            Tablename=Tablename.lower()
+            mysqlconn=Mysqlconnect()
+            logger.info(f'Mysql connection established')
+            getdata_query =f"select * from {Tablename};"
+            data=mysqlconn.execute(getdata_query).fetchall()
+            logger.info(f'Data retrived from Mysql')
+            mysqlconn.close()
+            logger.info(f'Mysql connection closed after retreiving the data')
+            cols_list=cols_lst[lst]
+            #copying df to local
+            with open(f'{datapath}{Tablename}.csv','w') as p:
+                writer=csv.writer(p)
+                writer.writerow(cols_list)
+                writer.writerows(data)
+            logger.info(f'Data copied to the csv file')
+            #creating dataframe with data
+            df=pd.DataFrame(data=data,columns=cols_list,dtype=object)
+            df = df.where(pd.notnull(df), None)
+            df['ingestion_timestamp'] = cur_date  #adding the audit column
+           # logger.info(f'{df.head()}')
+            exist_query=f"""SELECT EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = '{schema_name}' AND tablename = '{Tablename}');"""
+            STATUS = rsengine.execute(exist_query).fetchall()
+            if(STATUS[0][0] == True) or (STATUS[0][0] == "t"):
+                truncate_query=f"""truncate table {schema_name}.{Tablename}"""
+                rsengine.execute(truncate_query)
+                logger.info(f"the data in the {schema_name}.{Tablename} is truncated ")
+            logger.info(f'loading data to redshift db')
+            df.to_sql(Tablename,schema=f'{schema_name}',con=rsengine,index=False,if_exists='append',method='multi',chunksize=1000)
+            logger.info(f'data is loaded into redshift table : {Tablename}')
+            logger.info(f'----------------------------------')
+    except Exception as e:
+        logging.error(f'Exception due to this error : {e}')
+        os.system(f'echo "{Message_ingestion}{logfile}" | mailx -s "{subject}" {dl}')
+except Exception as e:
+    logging.error(f'Exception due to this error : {e}')
+==================================================================================================
+
+[hvr2@ip-10-242-112-153 US172982_IMP_Tables]$ cat /home/hvr2/Mysql_ingestion/US172982_IMP_Tables/config_1.json
+{
+    "Source":
+    {
+        "schema_name":"",
+        "db_user":"ODPUSER@hcmyp-mscsi",
+        "db_password":"xsw2CDE#vfr4BGT%",
+        "db_host":"10.155.88.244",
+        "db_port":"3306",
+        "db_name":"iswap",
+        "ssl_args":{"ssl_ca": "/home/hvr2/Mysql_ingestion/cert.crt.pem"}
+    },
+    "Target":
+    {
+        "config_path" :"/home/hvr2/.aws/redshift_connection.ini",
+        "connection_profile":"Connections_INNOVATION",
+        "schema_name":"imp_fr",
+        "Tablenames" :"itemconsumption,itemcost",
+        "datapath" :"/home/hvr2/Mysql_ingestion/US172982_IMP_Tables/data/",
+        "Tablecols":[["itemcons_id", "itemcons_fk_item", "itemcons_demand", "itemcons_demand_total", "itemcons_consumption", "itemcons_am", "itemcons_as", "itemcons_eu", "itemcons_total", "itemcons_foafoi", "itemcons_foafoi_total"],["itemcost_id", "itemcost_fk_item", "itemcost_update", "itemcost_mmicv", "itemcost_arc", "itemcost_dtp"]]
+    } ,
+"logfile" : "/home/hvr2/Mysql_ingestion/US172982_IMP_Tables/logs/Mysql_log_1.csv",
+"dl" :  "503371115@ge.com",
+"email_info":
+        {
+            "Subject" :"some error occured while executing : Failure",
+            "Message_conn" : "Exception while connecting to the source .please refer to the logfile path : ",
+            "Message_ingestion" : "Exception while ingesting data to the redshift.please refer to the logfile path :  ",
+            "Message_execution" :" Exception while execcuting . Please refer to the log file path :"
+        }
+
+}
+
+
+===============================================================================================

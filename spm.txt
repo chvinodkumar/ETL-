@@ -1,0 +1,260 @@
+spm:--
+[hvr2@ip-10-242-112-153 spm]$ ll
+total 52
+-rw-rw-r-- 1 hvr2 hvr2 5493 Jan 10 14:45 boxtoredshift.py
+drwxrwxr-x 2 hvr2 hvr2   47 Mar  1 05:48 data
+-rw-rw-r-- 1 hvr2 hvr2  578 Oct 25 12:45 dbconnections.py
+-rw-rw-r-- 1 hvr2 hvr2 3716 Nov  1 06:31 getfilesfrombox.py
+-rw-rw-r-- 1 hvr2 hvr2 2368 Mar  1 05:48 main.log
+-rw-rw-r-- 1 hvr2 hvr2 1215 Jan 10 13:17 main.sh
+drwxrwxr-x 2 hvr2 hvr2   41 Nov  1 06:24 __pycache__
+-rw-rw-r-- 1 hvr2 hvr2  870 Jan 10 13:45 spm_cinstl_s.json
+-rw-rw-r-- 1 hvr2 hvr2  895 Jan 10 13:45 spm_digarev_s.json
+-rw-rw-r-- 1 hvr2 hvr2  900 Jan 10 13:46 spm_eqpdigarev_s.json
+-rw-rw-r-- 1 hvr2 hvr2  870 Jan 10 13:46 spm_otd_run_chart_s.json
+-rw-rw-r-- 1 hvr2 hvr2  836 Jan 10 13:47 spm_pacing_file_fs.json
+-rw-rw-r-- 1 hvr2 hvr2  863 Jan 10 13:47 spm_spi_file_s.json
+-rw-rw-r-- 1 hvr2 hvr2  897 Jan 10 13:48 spm_svcdar_s.json
+========================================================================================================
+
+python3 /home/hvr2/spm/getfilesfrombox.py --infile /home/hvr2/spm/spm_spi_file_s.json
+python3 /home/hvr2/spm/boxtoredshift.py --infile /home/hvr2/spm/spm_spi_file_s.json
+
+==========================================================================================================
+[hvr2@ip-10-242-112-153 spm]$ cat /home/hvr2/spm/getfilesfrombox.py
+from datetime import datetime
+import warnings
+warnings.filterwarnings(action='ignore',message='Python 3.6 is no longer supported')
+from boxsdk import JWTAuth, Client
+import json
+import argparse
+import os
+parser = argparse.ArgumentParser(description='Box Ingestion')
+parser.add_argument('--infile', nargs=1, help="JSON file to be processed", type=argparse.FileType('r'))
+arguments = parser.parse_args()
+
+# Loading a JSON object returns a dict.
+contents = json.load(arguments.infile[0])
+ingest_latest = contents['ingest_latest']
+datepattern = contents['datepattern']
+archivefolderid = contents['archivefolderid']
+move_to_archive = contents['move_to_archive']
+cur_date=datetime.now().strftime('%Y_%m_%d:%H_%M')
+
+#################getting access from the json file######################
+def getAccessToBox(JWT_file_path):
+    auth = JWTAuth.from_settings_file(JWT_file_path)
+    return Client(auth)
+
+
+#########################changing the file names in correct formt############
+def getFileWithChangeName(client,file_id,dest_location,box_folder_id):
+    try:
+        file_name = client.file(file_id).get().name.replace(' ', '_')
+        with open(dest_location + file_name, 'wb') as open_file:
+            client.file(file_id).download_to(open_file)
+    except Exception as e:
+        print(f"Exception found when downloading file from Box: \n{str(e)}")
+
+
+def sort_files(files):
+    try:
+        if len(files)>1:
+            files.sort(key=lambda x: datetime.strptime(x.rpartition('_')[-1], contents['date_pattern']), reverse=True)
+        return files
+    except Exception:
+        print(f'Cannot sort with given time format. Found {len(files)} files in this location')
+
+
+################get files to the local #########################
+def getFiles(client,folder_id,Files_Stage_location, file_pattern):
+    filesLoaded=list()
+    if file_pattern:
+        file_list = [i.name for i in client.folder(folder).get_items() if file_pattern in i.get().name]
+    else:
+        file_list = [i.name for i in client.folder(folder).get_items()]
+    print("File List:", file_list)
+    if file_list == []:
+        print('No files found with the given pattern')
+        return None
+    if ingest_latest and datepattern:
+        file_list = sort_files(file_list)[:1]
+    for item in client.folder(folder_id).get_items():
+        if item.type == "folder":
+            print(f"{item} is a folder")
+        elif item.type == "file" and item.name in file_list:
+            getFileWithChangeName(client,item.id,Files_Stage_location,folder_id)
+            filesLoaded.append(item)
+        if move_to_archive:
+            move_files_to_archive(item, archivefolderid)
+    return filesLoaded
+
+
+#############moving files to archive location in box################
+def move_files_to_archive(item, archivefolderid):
+    try:
+        file_to_move = client.file(item.id).rename(f"_{cur_date}.".join(item.name.split('.')))
+        destination_folder_id = contents[archivefolderid]#'206172309808'
+        destination_folder = client.folder(destination_folder_id)
+        file_to_move.move(parent_folder=destination_folder)
+        print(f"file{file_to_move} moved to archived location {destination_folder}")
+    except Exception as e:
+        print(f"Exception found when moving files to archive: \n{str(e)[:1000]}")
+
+
+########################main method #################################
+if __name__ == "__main__":
+    folder = contents["sourcefolderid"]#folder id
+    filepath = contents["path_where_to_load_in_local"]
+    client = getAccessToBox(f'{contents["boxconfig"]}')
+    file_pattern = contents["filepattern"]
+    for i in os.listdir(filepath):
+        os.remove(os.path.join(filepath, i))
+    getFiles(client,folder,filepath,file_pattern)
+=====================================================================================
+
+
+[hvr2@ip-10-242-112-153 spm]$ cat /home/hvr2/spm/boxtoredshift.py
+################################################importing packages###########
+import configparser
+from dbconnections import read_config_file
+import os
+import json
+from datetime import datetime
+import pandas as pd
+import sqlalchemy as sa
+import argparse
+from time import time
+import warnings
+warnings.filterwarnings(action='ignore',message='Python 3.6 is no longer supported')
+
+#############################parameters passing ###########################
+parser = argparse.ArgumentParser(description='Azure Storage to S3.')
+parser.add_argument('--infile', nargs=1, help="JSON file to be processed", type=argparse.FileType('r'))
+args = parser.parse_args()
+contents = json.load(args.infile[0])
+
+def main(contents):
+    config_path =contents["configpath"] #/home/hvr/.aws/redshift_connection.ini
+    connection_profile =contents["connectionprofile"] #Connection is either prod or nprod
+    filepath=contents["path_where_to_load_in_local"] #path where the files are loaded from the box
+    schemaname=contents["schemaname"].lower() #schema where the tables are created
+    touchfile=contents["touchfile"] #path where the touch file is created after loading the data into the table
+    projectname=contents["projectname"] #name of the project
+    s3path=contents["touchfiles3path"] #s3 path where the touch file is to be placed in s3 bucket
+    dl=contents["DL"] #DL for sending mails
+    chunksize=contents['chunksize']
+    sheetname=contents['sheetname']
+    separator = contents['separator']
+    encoding=contents['encoding']
+    full_load=contents['full_load']
+    #########################reading current date and time###################
+
+    cur_date=datetime.now().strftime('%Y_%m_%d-%H_%M')
+    try:
+    ####################### getting parameters and connectingto the db###############################
+        DBNAME, USER, PASS, HOST, PORT,s3_profile = read_config_file(config_path, connection_profile)
+        engine = sa.create_engine(f"postgresql://{USER}:{PASS}@{HOST}:{PORT}/{DBNAME}")
+        conn = engine.connect()
+        conn.autocommit = True
+        table = contents['tablename'].lower()
+        if not os.listdir(filepath):
+            print('No files were downloaded. Exiting script')
+            return None
+        if full_load:
+        ######################### checking the table exists or not###################################
+            exist_query=f"""SELECT EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = '{schemaname}' AND tablename = '{table}');"""
+            STATUS = engine.execute(exist_query).fetchall()
+        ########################if exists truncating the data from the table ####################
+            if(STATUS[0][0] == True or STATUS[0][0] == 't'):
+                truncate_query=f"""truncate table {schemaname}.{table}"""
+                engine.execute(truncate_query)
+                print(f"the data in the {schemaname}.{table} is truncated ")
+    #########################passing columns list ################################
+    #################### reading files from the path where the files are loaded from the box#####################
+        for file in os.listdir(filepath):
+            start_time = time()
+            try:
+                if '.xlsx' in file:
+                    df = pd.read_excel(f'{filepath}{file}', sheet_name=sheetname, engine='openpyxl')
+                else:
+                    df = pd.read_csv(f'{filepath}{file}',quotechar='"',quoting=0,engine='python',encoding=encoding,sep=separator)
+                df = df.where(pd.notnull(df), None)
+                df = df.dropna(how='all')
+                df["ingestion_timestamp"]=datetime.now()
+            ###########################loading df to the table ###########################################
+                df.columns = [col.strip(' ').replace(' ', '_').lower() for col in df.columns]
+                if table == 'spm_spi_file_s':
+                    df = df[['n_level_region_or_surgery', 'business', 'e_level_modality', 'c_level_modality_desc', 'modality', 'planning_name_desc', 'py_units', 'volume_unit', 'cy_units', 'py_sales', 'fx_sales', 'price_sales', 'volume_sales', 'cy_sales', 'py_icv', 'dm_fx_icv', 'config_icv', 'volume_icv', 'mixtot_icv', 'npi_icv', 'cogs_icv', 's2s__icv', 'cy_icv', 'py_sm', 'fx_sm', 'price/config_sm', 'volume_sm', 'mixtot_sm', 'npi_sm', 'cogs_sm', 's2s_sm', 'cy_sm', 'py_sm%', 'fx_sm%', 'price/config_sm%', 'volume_sm%', 'mixtot_sm%', 'npi_sm%', 'cogs_sm%', 's2s_sm%', 'cy_sm%', 'ingestion_timestamp']]
+                print(df.head())
+                df.to_sql(table,con=conn,schema=schemaname,if_exists='append',index=False,chunksize=chunksize,method='multi')
+                print(f"{table} table was sent to redshift with the size {df.shape}. Time taken = {time()-start_time}")
+            #######################touch file craetion and placing in the s3 bucket########################
+            # os.system(f'touch {touchfile}redshift-{projectname}-{table}-{cur_date}.csv')
+            # os.system(f'aws s3 cp {touchfile}redshift-{projectname}-{table}-{cur_date}.csv {s3path} --profile {s3_profile}')
+            except Exception as e:
+                print(e)
+                os.system(f'echo "Exception while inserting into the db \n {str(e)[:1000]}" | mailx -s "some error occured while executing" {dl}')
+    except Exception as e:
+        print(e)
+        os.system(f'echo "Exception while connecting to the database \n {str(e)[:1000]}" | mailx -s "some error occured while executing" {dl}')
+
+main(contents)
+
+
+==================================================================================================================
+[hvr2@ip-10-242-112-153 spm]$ cat /home/hvr2/spm/spm_cinstl_s.json
+{
+    "configpath":"/home/hvr2/.aws/redshift_connection.ini",
+    "boxconfig":"/home/hvr2/.aws/conf.json",
+    "connectionprofile":"Connections_INNOVATION",
+    "sourcefolderid":"201791177047",
+    "sheetname": "",
+    "move_to_archive": false,
+    "filepattern": "SPM_UNITY_DATA_EXPORT.txt",
+    "datepattern": "%Y%m%d%H%M%S",
+    "encoding": "utf-16",
+    "ingest_latest": true,
+    "separator": "\t",
+    "chunksize": 20000,
+    "schemaname":"sbu_unity_fr",
+    "tablename": "SPM_CINSTL_S",
+    "full_load": true,
+    "path_where_to_load_in_local":"/home/hvr2/spm/data/",
+    "archivefolderid":"206134092761",
+    "bucketname":"s3://odp-us-innovation-ent-raw/",
+    "folder_structure_in_s3":"test_kanban_sftp/",
+    "touchfile":"test_touch_file",
+    "projectname":"test_project",
+    "touchfiles3path":"test_kanban_sftp/touch_files/",
+    "DL":"503358774@ge.com"
+}
+
+=================================
+
+[hvr2@ip-10-242-112-153 spm]$ cat /home/hvr2/spm/spm_eqpdigarev_s.json
+{
+    "configpath":"/home/hvr2/.aws/redshift_connection.ini",
+    "boxconfig":"/home/hvr2/.aws/conf.json",
+    "connectionprofile":"Connections_INNOVATION",
+    "sourcefolderid":"153078664783",
+    "sheetname": "Unity Dashboard pull - L2 EQ",
+    "move_to_archive": false,
+    "filepattern": "Edison Digital Apps - Systemic -",
+    "datepattern": "%Y%m%d%H%M%S",
+    "encoding": "",
+    "ingest_latest": true,
+    "separator": "",
+    "chunksize": 20000,
+    "schemaname":"sbu_unity_fr",
+    "tablename": "SPM_EQPDIGAREV_S",
+    "full_load": true,
+    "path_where_to_load_in_local":"/home/hvr2/spm/data/",
+    "archivefolderid":"231095015517",
+    "bucketname":"s3://odp-us-innovation-ent-raw/",
+    "folder_structure_in_s3":"test_kanban_sftp/",
+    "touchfile":"test_touch_file",
+    "projectname":"test_project",
+    "touchfiles3path":"test_kanban_sftp/touch_files/",
+    "DL":"503338399@ge.com"
+}

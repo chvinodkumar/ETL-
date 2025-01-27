@@ -1,0 +1,225 @@
+[hvr@ip-10-242-109-196 hcssopalincidentf]$ ll
+total 20
+drwxrwxr-x. 2 hvr  hvr    35 Mar  1 10:28 data
+-rw-r--r--. 1 root root 3131 Feb 29 22:10 error.log
+-rw-rw-r--. 1 hvr  hvr    70 Oct  3 09:32 fullload.sh
+-rw-rw-r--. 1 hvr  hvr  9038 Jan 22 10:03 hcssopalincidentf.py
+================================================================
+import configparser
+import psycopg2
+import sqlalchemy as sa
+
+config_path = '/home/hvr/.aws/redshift_connection.ini'
+connection_profile = 'Connections_PROD'
+
+
+# Pick from the following
+# ['Connections_PROD', 'Connections_INNOVATION', 'Connections_FINNPROD', 'Connections_FINPROD']
+def read_config_file(filepath, connection):
+    config = configparser.ConfigParser()
+    config.read(filepath)
+    db_name = config[connection]['dbname']
+    user = config[connection]['user']
+    password = config[connection]['password']
+    host = config[connection]['host']
+    port = int(config[connection]['port'])
+    return db_name, user, password, host, port
+
+
+DBNAME, USER, PASS, HOST, PORT = read_config_file(config_path, connection_profile)
+
+import os
+import json
+import requests
+from datetime import datetime
+import numpy as np
+import urllib3
+import pandas as pd
+import psycopg2
+import glob
+import psycopg2.extras as extras
+from sqlalchemy import create_engine
+
+
+
+filePath = '/home/hvr/hcssopalincidentf/data/'
+
+showpadfiles = glob.glob(filePath + '*')
+for f in showpadfiles:
+    os.remove(f)
+
+extDate = datetime.now().strftime('%d-%m-%Y')
+logs = []
+reslt = []
+
+
+def get_auth_headers():
+    request_body = {
+        "client_id": 'HC-Asset',
+        "client_secret": '0e0065acd1e1b91e5922a07979d78bbbd12b95af',
+        "scope": "api",
+        "grant_type": "client_credentials",
+    }
+
+    token = requests.post(
+        "https://fssfed.ge.com/fss/as/token.oauth2",
+        data=request_body,
+        headers={"Accept": "application/json"},
+        verify=False,
+    ).json()
+
+    headers = {
+        "Authorization": "{} {}".format(token["token_type"], token["access_token"]),
+        "x-api-key": "LHnZRBtyRA1jFyS7YdjqE9rNE4g0st2G1lKIrTVj"
+    }
+
+    return headers
+
+
+def search_request(body):
+    global akana_headers
+    res = requests.post(
+        search_url, headers=akana_headers, verify=False, data=json.dumps(body)
+    )
+    if res.status_code == requests.codes.unauthorized:
+        akana_headers = get_auth_headers()
+        res = requests.post(
+            search_url, headers=akana_headers, verify=False, data=json.dumps(body)
+        )
+    print(res)
+    return res
+
+
+cols = ['sys_class_name', 'u_service', 'u_service_sys_id', 'number', 'state', 'priority', 'opened_at', 'closed_at',
+        'resolved_at', 'close_notes', 'close_code', 'short_description', 'description', 'business_duration_seconds',
+        'calendar_duration_seconds', 'attr_seconds', 'dttr_seconds', 'business_impact', 'assignment_group',
+        'assigned_to', 'outage_owner', 'caused_by', 'opened_by', 'cause', 'resolved_by', 'closed_by', 'category',
+        'company', 'company_sys_id', 'sys_id', 'problem_id', 'inc_sys_id', 'cmdb_ci_sys_id', 'cmdb_ci', 'u_environment',
+        'u_environment_sys_id', 'urgency', 'data_origin', 'posting_agent', 'load_dtm']
+
+
+def fetchData(app_results):
+    df = pd.DataFrame(
+        {'sys_class_name': [], 'u_service': [], 'u_service_sys_id': [], 'number': [], 'state': [], 'priority': [],
+         'opened_at': [], 'closed_at': [], 'resolved_at': [], 'close_notes': [], 'close_code': [],
+         'short_description': [], 'description': [], 'business_duration_seconds': [], 'calendar_duration_seconds': [],
+         'attr_seconds': [], 'dttr_seconds': [], 'business_impact': [], 'assignment_group': [], 'assigned_to': [],
+         'outage_owner': [], 'caused_by': [], 'opened_by': [], 'cause': [], 'resolved_by': [], 'closed_by': [],
+         'category': [], 'company': [], 'company_sys_id': [], 'sys_id': [], 'problem_id': [], 'inc_sys_id': [],
+         'cmdb_ci_sys_id': [], 'cmdb_ci': [], 'u_environment': [], 'u_environment_sys_id': [], 'urgency': [],
+         'data_origin': [], 'posting_agent': [], 'load_dtm': []})
+    for item in app_results:
+        if item.get('sys_class_name')=='incident' and item.get('company')=='GE Healthcare' and item.get('u_service')=='Service Suite' or item.get('u_service')=='D&A ODP US GXP - Platform Spotfire':
+            df = df.append(
+                {'sys_class_name': item.get('sys_class_name'), 'u_service': item.get('u_service'),
+                 'u_service_sys_id': item.get('u_service_sys_id'), 'number': item.get('number'), 'state': item.get('state'),
+                 'priority': item.get('priority'), 'opened_at': item.get('opened_at'), 'closed_at': item.get('closed_at'),
+                 'resolved_at': item.get('resolved_at'), 'close_notes': item.get('close_notes'),
+                 'close_code': item.get('close_code'), 'short_description': item.get('short_description'),
+                 'description': item.get('description'), 'business_duration_seconds': item.get('business_duration_seconds'),
+                 'calendar_duration_seconds': item.get('calendar_duration_seconds'), 'attr_seconds': item.get('attr_seconds'),
+                 'dttr_seconds': item.get('dttr_seconds'), 'business_impact': item.get('business_impact'),
+                 'assignment_group': item.get('assignment_group'), 'assigned_to': item.get('assigned_to'),
+                 'outage_owner': item.get('outage_owner'), 'caused_by': item.get('caused_by'), 'opened_by': item.get('opened_by'),
+                 'cause': item.get('cause'), 'resolved_by': item.get('resolved_by'), 'closed_by': item.get('closed_by'),
+                 'category': item.get('category'), 'company': item.get('company'), 'company_sys_id': item.get('company_sys_id'),
+                 'sys_id': item.get('sys_id'), 'problem_id': item.get('problem_id'), 'inc_sys_id': item.get('inc_sys_id'),
+                 'cmdb_ci_sys_id': item.get('cmdb_ci_sys_id'), 'cmdb_ci': item.get('cmdb_ci'),
+                 'u_environment': item.get('u_environment'), 'u_environment_sys_id': item.get('u_environment_sys_id'),
+                 'urgency': item.get('urgency'), 'data_origin': 'opal_fr',
+                 'posting_agent': 'hcssopalincident.py',
+                 'load_dtm': datetime.now()}, ignore_index=True)
+    return df
+
+
+def get_apps():
+    body = {
+        "scroll": "20m",
+        "size": "1500",
+        "sort": ["_doc"],
+        "query": {
+            "bool": {
+            "must": [{"match": {"sys_class_name": "incident"}},
+                     {"match": {"u_service": "Service Suite','D&A ODP US GXP - Platform Spotfire"}},
+                     {"match": {"company": "GE Healthcare"}}]
+        }
+        }
+    }
+
+
+    try:
+        res_json = search_request(body).json()
+        data = res_json['hits']['hits']
+        _scroll_id = res_json['_scroll_id']
+        app_results = [a["_source"] for a in data]
+        reslt = fetchData(app_results)
+        totalcount = len(reslt)
+        print('Count is :' + str(totalcount))
+    except KeyError:
+        data = []
+        _scroll_id = _scroll_id
+    while data:
+        bodyScroll = {
+            "scroll": "20m",
+            "_scroll_id": _scroll_id
+        }
+        scroll_body = json.dumps(bodyScroll)
+        akana_headers = get_auth_headers()
+        scroll_res = requests.post(
+            search_url, headers=akana_headers, verify=False, data=scroll_body
+        )
+        print(scroll_res)
+        try:
+            res_json = scroll_res.json()
+            data = res_json['hits']['hits']
+            _scroll_id = res_json['_scroll_id']
+            app_results = [a["_source"] for a in data]
+            reslt = reslt.append(fetchData(app_results))
+            totalcount = len(reslt)
+            print('Count is :' + str(totalcount))
+        except KeyError:
+            _scroll_id = _scroll_id
+            print('Error: Elastic Search Scroll: %s' % str(scroll_res.json()))
+    print('res')
+    df1 = pd.DataFrame(reslt, columns=cols)
+    df1.to_csv(filePath + 'hcssopalincidentf.csv', index=False)
+
+
+def execute_values(conn, df, table):
+    tuples = [tuple(x) for x in df.to_numpy()]
+    cols = ','.join(list(df.columns))
+    # SQL query to execute
+    query = "INSERT INTO %s(%s) VALUES %%s" % (table, cols)
+    cursor = conn.cursor()
+    try:
+        extras.execute_values(cursor, query, tuples)
+        conn.commit()
+    except (Exception, psycopg2.DatabaseError) as error:
+        print("Error: %s" % error)
+        conn.rollback()
+        cursor.close()
+        return 1
+    print("the dataframe is inserted")
+    cursor.close()
+
+
+if __name__ == "__main__":
+    try:
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        akana_headers = get_auth_headers()
+        search_url = "https://api.ge.com/digital/opal/v3/assets/elastic/search"
+        start = datetime.now()
+        get_apps()
+        conn = psycopg2.connect(dbname=DBNAME, user=USER, password=PASS, host=HOST, port=PORT)
+        df = pd.read_csv(filePath + 'hcssopalincidentf.csv')
+        df = df.where(pd.notnull(df), None)
+        print(df.columns)
+        Q1 = f"""truncate table opal_fr.hc_ss_opal_incident_f"""
+        cursor = conn.cursor()
+        cursor.execute(Q1)
+        execute_values(conn, df, 'opal_fr.hc_ss_opal_incident_f')
+        print("Successfully data loaded to RS")
+        print("success")
+
+    except Exception as e:
+        print(e)

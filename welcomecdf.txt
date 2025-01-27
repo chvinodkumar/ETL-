@@ -1,0 +1,37 @@
+fullload.sh:--
+
+#!/bin/bash
+python3 /home/hvr2/welcomecdf/welcomecdf.py
+year=$(date '+%Y')
+month=$(date '+%m')
+day=$(date '+%d')
+aws s3 cp /home/hvr2/welcomecdf/data/ s3://odp-us-innovation-ent-raw/welcome/year=$year/month=$month/day=$day/ --profile innovation --recursive
+
+/home/hvr2/welcomecdf/welcomecdf.py:--
+
+import requests
+
+filePath = '/home/hvr2/welcomecdf/data/'
+url = "https://ngpwvb.files.cmp.optimizely.com/download/09d2dc668c5011eea2a6764a8be6bc52"
+
+payload = {}
+headers = {
+    'Cookie': 'welcome.sid=s%3A5f2113709e8b11eebde551242a6ac51dd24415412ef346c992f1291ee40695aa.%2BXEKXWaOj%2BZx72TZSvRp%2FzbZYLkhW7hdw8hU5dau%2FXg'
+}
+
+response = requests.request("GET", url, headers=headers, data=payload)
+with open(filePath + "welcomecdf.xlsx", "wb") as f:
+    f.write(response.content)
+f.close()
+print(filePath)
+
+
+======================================
+[hvr2@ip-10-242-112-153 welcomecdf]$ ll
+total 12
+-rw-rw-r-- 1 hvr2 hvr2 110 Feb  1 07:28 cdfwelcome.csv
+drwxrwxr-x 2 hvr2 hvr2  28 Jan  2 05:46 data
+-rw-rw-r-- 1 hvr2 hvr2 258 Jan  3 05:09 fullload.sh
+-rw-rw-r-- 1 hvr2 hvr2 769 Feb  1 09:39 welcomecdf.py
+
+

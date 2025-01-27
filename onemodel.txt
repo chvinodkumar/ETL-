@@ -1,0 +1,159 @@
+onemodel:--- 
+[hvr2@ip-10-242-112-153 onemodel]$ ll
+total 32
+drwxrwxr-x 2 hvr2 hvr2 4096 Jan 19 12:39 data
+-rw-rw-r-- 1 hvr2 hvr2  450 Jan 19 11:58 fullload.sh
+-rw-rw-r-- 1 hvr2 hvr2 4362 Jan  3 09:57 onemodel.py
+-rw-rw-r-- 1 hvr2 hvr2 5238 Jan 19 12:38 test.py
+
+[hvr2@ip-10-242-112-153 onemodel]$ cat fullload.sh
+#! /bin/bash
+
+
+echo "execution started"
+
+python3 /home/hvr2/onemodel/test.py '/home/hvr2/onemodel/data/' '144670457308' '/home/hvr2/.aws/conf.json' '' '' '/home/hvr2/.aws/redshift_connection.ini' 'Connections_INNOVATION' 'one_model' 'modality_enablement'
+
+echo "execution ended"
+
+=====================================
+
+
+import os
+import json
+import requests
+import glob
+import configparser
+import psycopg2
+import sqlalchemy as sa
+import pandas as pd
+import psycopg2.extras as extras
+import glob
+import os, sys
+from boxsdk import JWTAuth, Client
+from datetime import datetime, timezone, timedelta
+from sqlalchemy import create_engine, types
+
+config_path = sys.argv[6]
+connection_profile = sys.argv[7]
+
+
+def read_config_file(filepath, connection):
+    config = configparser.ConfigParser()
+    config.read(filepath)
+    db_name = config[connection]['dbname']
+    user = config[connection]['user']
+    password = config[connection]['password']
+    host = config[connection]['host']
+    port = int(config[connection]['port'])
+    return db_name, user, password, host, port
+
+
+DBNAME, USER, PASS, HOST, PORT = read_config_file(config_path, connection_profile)
+
+
+def getAccessToBox(JWT_file_path):
+    auth = JWTAuth.from_settings_file(JWT_file_path)
+    client = Client(auth)
+    print("END at", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"), ":", "getAccessToBox")
+    return client
+
+
+def getFileWithChangeName(client, file_id, dest_location, box_folder_id):
+    file_name = client.file(file_id).get().name
+    print(dest_location)
+    open_file = open(dest_location + file_name, 'wb')
+    client.file(file_id).download_to(open_file)
+    open_file.close()
+
+
+def getfolders(client, folder_id, Files_Stage_location, file_name_pattern):
+    filesLoaded = list()
+    for item in client.folder(folder_id).get_items():
+        if item.type == "file":
+            getFileWithChangeName(client, item.id, Files_Stage_location, folder_id)
+            filesLoaded.append(item)
+    print("END at", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"), ":", "getFiles")
+    return filesLoaded
+
+
+def getFiles(client, folder_id, Files_Stage_location, file_name_pattern, boxfolderid):
+    filesLoaded = list()
+    for item in client.folder(folder_id).get_items():
+        if item.type == "file":  # and re.fullmatch(file_name_pattern, item.name):
+            getFileWithChangeName(client, item.id, Files_Stage_location, folder_id)
+            filesLoaded.append(item)
+    print("END at", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"), ":", "getFiles")
+    return filesLoaded
+
+
+def execute_values(conn, df, table):
+    tuples = [tuple(x) for x in df.to_numpy()]
+    cols = ','.join(list(df.columns))
+    # SQL query to execute
+    query = "INSERT INTO %s(%s) VALUES %%s" % (table, cols)
+    cursor = conn.cursor()
+    try:
+        extras.execute_values(cursor, query, tuples)
+        conn.commit()
+    except (Exception, psycopg2.DatabaseError) as error:
+        print("Error: %s" % error)
+        conn.rollback()
+        cursor.close()
+        return 1
+    print("the dataframe is inserted")
+    cursor.close()
+
+
+try:
+    if __name__ == "__main__":
+        targetpath = sys.argv[1]
+        folder_id = sys.argv[2]
+        config_file_path = sys.argv[3]
+        ingestion_dl = sys.argv[4]
+        developer_id = sys.argv[5]
+        schemaname = sys.argv[8]
+        tablename = sys.argv[9]
+
+        cur_date = datetime.now()
+        past_date = cur_date - timedelta(days=0)
+        dt = past_date.strftime("%m.%d.%Y")
+
+        onlyevts = glob.glob(targetpath + '*.xlsx')
+        for f2 in onlyevts:
+            os.remove(f2)
+        par = glob.glob(targetpath + '*.parquet')
+        for f3 in par:
+            os.remove(f3)
+        csv = glob.glob(targetpath + '*.csv')
+        for f4 in csv:
+            os.remove(f4)
+        client = getAccessToBox(f'{config_file_path}')
+        getfolders(client, folder_id, targetpath, f'*')
+        os.chdir(targetpath)
+        for file in glob.glob("*.csv"):
+            print(file)
+            if file == 'OneModel_ModalityEnablement.csv':
+                df = pd.read_csv(file, header=None, names=['Combined_Column'],encoding="utf-16")
+                df[['chu_modality', 'chu_modality_enabled', 'symptom_enabled']] = df['Combined_Column'].str.split(',', expand=True)
+                df.drop(columns=['Combined_Column'], inplace=True)
+                # df = df[['chu_modality', 'chu_modality_enabled', 'symptom_enabled']]
+                df.columns = df.columns.str.lower()
+                df['data_origin'] = file
+                df['posting_agent'] = schemaname
+                df['load_dtm'] = datetime.now()
+                df = df.where(pd.notnull(df), None)
+                print(df.columns)
+                engine = create_engine(f"postgresql://{USER}:{PASS}@{HOST}:{PORT}/{DBNAME}",
+                                       echo=True).execution_options(
+                    autocommit=True)
+                conn = engine.connect()
+                df.to_sql(tablename, schema=schemaname, con=conn, if_exists='replace', index=False, method='multi')
+                print("Successfully data loaded to RS")
+except NameError:
+    print("some error occurred while executing")
+    os.system(
+        f'echo "Exception from the archived files" | mailx -s "some error occurred while executing" {developer_id} ')
+
+
+

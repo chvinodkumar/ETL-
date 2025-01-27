@@ -1,0 +1,520 @@
+
+data_fabric_inno:---
+
+[hvr2@ip-10-242-112-153 data_fabric_inno]$ ll
+total 24
+-rw-rw-r-- 1 hvr2 hvr2 7473 Oct 23 09:37 compaction.py
+drwxrwxr-x 2 hvr2 hvr2 4096 Oct 23 02:42 innov
+drwxrwxr-x 2 hvr2 hvr2 4096 Oct 23 02:27 logs
+-rw-rw-r-- 1 hvr2 hvr2 7881 Sep 21 11:12 nuvolo_api.py
+=================================================
+python3 nuvolo_api.py --infile /innov/cmn_department.json > logs/frc_smartsheet_global_inventory_view_s.log
+================================================
+nuvolo_api.py:--
+
+import json
+import argparse
+import time
+from psycopg2.errors import DuplicateTable
+from sqlalchemy.exc import ProgrammingError
+import boto3
+import io
+import configparser
+from sqlalchemy import create_engine, types
+import requests
+from datetime import datetime, date
+import pandas as pd
+import json
+import sys
+import os
+
+# overview
+
+start_time = time.time()
+dt = date.today()
+year, month, datee = dt.strftime('%Y'), dt.strftime('%m'), dt.strftime('%d')
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--infile', nargs=1, help="JSON file to be processed", type=argparse.FileType('r'))
+arguments = parser.parse_args()
+
+
+# Loading a JSON object returns a dict.
+config_info = json.load(arguments.infile[0])
+
+config_path = config_info['config_path']
+connectionprofile = config_info['connectionprofile']
+AWSPROFILE = config_info['AWSPROFILE']
+AWSBUCKET = config_info['AWSBUCKET']
+
+filepath = config_info['filepath']
+table_name = config_info['table_name']
+schema_name=config_info['schema_name']
+
+us, pswd = config_info['credentials']
+URl = f"{config_info['URL']}/{config_info['table_name']}?"
+limit=config_info['limit']
+
+
+print(config_info['table_name'])
+
+def execute_cmd(cmd):
+    try:
+        os.system(cmd)
+    except Exception as err:
+        print(err)
+        print(f'System Command execution failed')
+
+def read_config_file(filepath, connection):
+    """
+    Read Dasbase config info
+
+    Parameters
+    ----------
+    Filepath : str
+        Config file path has to be passed
+    Connection : str
+        It takes the specific Datadase info.
+
+    Returns
+    -------
+    array : ndarray or ExtensionArray
+        DBNAME, USER, PASS, HOST, PORT for the specific connection
+
+    Raises
+    ------
+    TypeError
+        if incompatible Connection is provided, equivalent of same_kind
+        casting
+    """
+    config = configparser.ConfigParser()
+    config.read(filepath)
+    db_name = config[connection]['dbname']
+    user = config[connection]['user']
+    password = config[connection]['password']
+    host = config[connection]['host']
+    port = int(config[connection]['port'])
+    return db_name, user, password, host, port
+
+# function call returns the datables info
+DBNAME, USER, PASS, HOST, PORT = read_config_file(config_path, connectionprofile)
+redshift = create_engine(f"postgresql://{USER}:{PASS}@{HOST}:{PORT}/{DBNAME}").connect().execution_options(autocommit=True)
+
+def execute_query(query):
+    """
+    Execute the provided query
+
+    Parameters
+    ----------
+    query : str
+        SQL Query
+
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    TypeError
+        if incompatible query is provided
+    """
+    try:
+        redshift.execute(query)
+    except Exception as err:
+        # send an email to DL
+        print(err)
+        print("Query Failed")
+
+def load_to_s3(BUCKET, temp_df, s3_path):
+    """
+    Read Dasbase config info
+
+    Parameters
+    ----------
+    Filepath : str
+        Config file path has to be passed
+    Connection : str
+        It takes the specific Datadase info.
+
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    TypeError
+        if incompatible Connection is provide.
+    """
+    session = boto3.Session(profile_name=AWSPROFILE)
+    client = session.client('s3')
+    csv_buf = io.BytesIO()
+    temp_df.to_parquet(csv_buf, index=False)
+    client.put_object(Bucket=BUCKET, Body=csv_buf.getvalue(), Key=s3_path)
+    print(temp_df.shape, ': Shape of this dataframe loaded to s3')
+
+def make_api_request(url):
+    """
+    Make an api request
+
+    Parameters
+    ----------
+    URL : str
+        Takes an API URL
+
+    Returns
+    -------
+    response: Response Object
+        returns response status and headers
+    result : ndarray or ExtensionArray
+        returns api response data
+
+    Raises
+    ------
+    TypeError
+        if incompatible URL is provide.
+    """
+    try:
+        res = requests.request("GET", url, auth=(us, pswd))
+        result = res.json()['result']
+        return res, result
+    except Exception as err:
+        execute_cmd(f"""echo "Api call failed for the {config_info["table_name"]} table" | mailx -s "Ingestion Failed"  {config_info["email_stake_holders"]}""")
+        print("catchup error")
+        print(err[:-10000])
+
+def df2S3(data, page):
+    """
+    load dataframe to s3 location
+
+    Parameters
+    ----------
+    data : Array
+        This takes the Array of object as data
+    page :  Int
+        it's a offset value
+
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    TypeError
+        if incompatible URL is provide.
+    """
+    try:
+        filename = f'{str(page)}_{table_name}_{date.today().strftime("%Y%m%d%H%M%S")}.parquet'
+        df = pd.DataFrame(data).fillna('')
+        df = df.apply(lambda x: x.apply(lambda y: json.dumps(y) if isinstance(y, dict) else y))
+        df = df.astype(str)
+        max_date_time = pd.to_datetime(df['sys_updated_on'], format='%Y-%m-%d %H:%M:%S').max().strftime('%Y-%m-%d %H:%M:%S').split(' ')
+        print("max time --- ", max_date_time ,"-- at offset -- ", page)
+        # df.to_parquet(filename)
+        load_to_s3(AWSBUCKET, df, f'servicenow/{schema_name}/{table_name}/{year}/{month}/{datee}/{filename}')
+        print("df loaded to s3")
+        max_timestamp = " ".join(max_date_time)
+        audit_insert_query=f"INSERT INTO {config_info['audit_schema_table']} VALUES (0, '{schema_name}', '{table_name}',  'nuvolo_df','sys_updated_on' ,'{max_timestamp}')"
+        execute_query(audit_insert_query)
+    except Exception as err:
+        execute_cmd(f"""echo "Ingestion for the {config_info["table_name"]} table failed at s3" | mailx -s "Ingestion Failed"  {config_info["email_stake_holders"]}""")
+        print("Ingestion error")
+        print(err)
+        sys.exit()
+
+try:
+    #  get min date from mirror table for incremental
+    maxdate, maxtime = redshift.execute(f"select max(max_timestamp) from {config_info['audit_schema_table']} where table_name='{config_info['table_name']}' and schema_name='{config_info['schema_name']}'").fetchall()[0][0].split(' ')
+    incremntal=True
+except Exception as err:
+    #  get min date from config file for Full load
+    maxdate, maxtime = config_info['min_datetime']
+    incremntal=False
+
+offset=0
+count=0
+remaining_records=True
+
+# Pagination to fetch all the records for the specfic table
+# If it fail's at any page it will tries 3 times after 3 sec
+# If the job is set in incremntal mode then system query will have sys_updated_on greater then query
+# Else only order by is added to sysparm_query to avoild the max exectuion transation failure
+# If it the last next page and if it have zero records or X-Total-Count value is zero then it will wxit from the loop
+
+while remaining_records:
+    for tries in range(3):
+        try:
+            parms = f"&sysparm_display_value=true&sysparm_suppress_pagination_header=true&sysparm_limit={limit}&sysparm_offset={offset}"
+            if incremntal:
+                sysparm_query = f"&sysparm_query=sys_updated_on>=javascript:gs.dateGenerate('{maxdate}', '{maxtime}')%5E{config_info['sysparm_query']}"
+            else:
+                sysparm_query = f"&sysparm_query={config_info['sysparm_query']}"
+            sysparm_fields="sysparm_fields="+"%2C".join(config_info['column_dtypes'].keys())
+            url = URl + sysparm_fields + sysparm_query + parms
+            res, data = make_api_request(url)
+            if not (len(data)>0 and int(res.headers['X-Total-Count'])>0):
+                remaining_records=False
+                break
+            print(f"{len(data)} records loaded remaining - {res.headers['X-Total-Count']}")
+            df2S3(data, offset)
+            offset+=limit
+        except Exception as err:
+            print(err)
+            print(f'Exception created at try number {tries,err}')
+            time.sleep(3)
+            if tries == 2:
+                print(f'Max tries reaches, moving to next iteration')
+============================================================================================================================
+[hvr2@ip-10-242-112-153 data_fabric_inno]$ cat compaction.py
+import pandas as pd
+import json
+import argparse
+import time
+from psycopg2.errors import DuplicateTable
+from sqlalchemy.exc import ProgrammingError, InternalError
+import boto3
+import io
+import configparser
+from sqlalchemy import create_engine, types
+from datetime import datetime, date, timedelta
+from sqlalchemy.dialects import postgresql
+
+redshift_keywords = list(postgresql.dialect().preparer.reserved_words)
+dt = date.today()-timedelta(days=3)
+year, month, datee = dt.strftime('%Y'), dt.strftime('%m'), dt.strftime('%d')
+parser = argparse.ArgumentParser()
+parser.add_argument('--infile', nargs=1, help="JSON file to be processed", type=argparse.FileType('r'))
+arguments = parser.parse_args()
+# Loading a JSON object returns a dict.
+config_info = json.load(arguments.infile[0])
+
+config_path = config_info['config_path']
+connectionprofile = config_info['connectionprofile']
+AWSPROFILE = config_info['AWSPROFILE']
+AWSBUCKET = config_info['AWSBUCKET']
+filepath = config_info['filepath']
+table_name = config_info['table_name']
+schema_name = config_info['schema_name']
+
+external_table=f'{table_name}_ext'
+
+def read_config_file(filepath, connection):
+    config = configparser.ConfigParser()
+    config.read(filepath)
+    db_name = config[connection]['dbname']
+    user = config[connection]['user']
+    password = config[connection]['password']
+    host = config[connection]['host']
+    port = int(config[connection]['port'])
+    return db_name, user, password, host, port
+
+
+DBNAME, USER, PASS, HOST, PORT = read_config_file(
+    config_path, connectionprofile)
+redshift = create_engine(
+    f"postgresql://{USER}:{PASS}@{HOST}:{PORT}/{DBNAME}").connect().execution_options(autocommit=True)
+
+
+def cast_column(clm, dtype):
+    clm_dtype_map = {
+        'datetime64': f"case when {clm} = 'null' then null when {clm} ='' then null else {clm}::timestamp end as {clm}",
+        'int64': f"case when {clm} = 'null' then null when {clm} =' ' then null else replace({clm},',','')::int end as {clm}",
+        'boolean': f"case when {clm} = 'null' then null when {clm} ='' then null else replace(replace( {clm} ,'false','0'),'true','1')::int::boolean end as {clm}",
+        'object': f"case when {clm} = 'null' then null when {clm} ='' then null else {clm} end as {clm}"
+        # 'character varying': clm
+    }
+    return clm_dtype_map[dtype]
+
+
+def addCollation(dtype):
+    cml_dtyp = {
+        'object': 'character varying(65500) collate case_insensitive',
+        'datetime64': 'timestamp',
+        'boolean': 'boolean',
+        'int64': 'int'
+    }
+    return cml_dtyp[dtype]
+
+
+stg_df = pd.DataFrame([config_info['column_dtypes']])
+stg_df = stg_df.T.reset_index().rename(columns={'index':'column_name', 0:'data_type'})
+stg_df['column_name'] = stg_df['column_name'].apply(lambda x: f'"{x}"' if x in redshift_keywords else x)
+stg_df['cast'] = stg_df.apply(lambda x: cast_column(x.column_name, x.data_type), axis=1)
+casted_colmns = ', '.join(stg_df['cast'])
+stg_df['collation'] = stg_df.apply(lambda x: x.column_name + ' ' + addCollation(x.data_type), axis=1)
+collation_colmns = ', '.join(stg_df['collation'])
+ref_col_df = pd.DataFrame(config_info['referance_columns'], columns=['referance_columns'])
+referance_columns = ', '.join(ref_col_df['referance_columns'].apply(lambda x: x+'_id character varying(65500) collate case_insensitive'))
+
+def get_full_load_id(col):
+    return f"substring(json_extract_path_text({col}, 'link'), regexp_instr(json_extract_path_text({col}, 'link'),'/', 1, 7)+1, length(json_extract_path_text({col}, 'link'))) as {col}_id"
+
+
+ref_col_df['full_sub_query'] = ref_col_df['referance_columns'].apply(lambda x: get_full_load_id(x))
+full_sub_querys = ', '.join(ref_col_df['full_sub_query'])
+
+
+def execute_query(query, success_msg='query executed successfully'):
+    try:
+        redshift.execution_options(isolation_level="AUTOCOMMIT").execute(query)
+        print(f"###### {success_msg} #########")
+    except ProgrammingError as e:
+        if (isinstance(e.orig, DuplicateTable)):
+            print("##########################################")
+            print("######    Table already exist    #########")
+            print("##########################################")
+        elif "partition already exists." in str(e).lower():
+            print('partition already exists')
+        else:
+            print(e)
+    except InternalError as e:
+        if "table already exists" in str(e).lower():
+            print("External table already exists")
+        elif "json parsing error" in str(e).lower():
+            print("json parsing error")
+        else:
+            print(e)
+    except Exception as err:
+        print(err)
+
+varchar_max_columns = ' Varchar(max), '.join(stg_df['column_name'].tolist())
+
+create_external_table = f"create external table s3dataschema.{external_table}({varchar_max_columns} Varchar(max)) PARTITIONED BY (Timestamp varchar(5000)) stored as parquet location 's3://{config_info['AWSBUCKET']}/servicenow/{schema_name}/{table_name}/{year}/{month}/{datee}/'"
+
+alter_ext_table=f"alter table s3dataschema.{external_table} add partition(Timestamp = '{year}-{month}-{datee}') location's3://{config_info['AWSBUCKET']}/servicenow/{schema_name}/{table_name}/{year}/{month}/{datee}/'"
+
+if len(config_info['referance_columns'])>0:
+    Create_stage_table = f"create table {schema_name}.{table_name}_stg({collation_colmns}, {referance_columns}, RowNumber bigint)"
+    Create_main_table = f"create table {schema_name}.{table_name}({collation_colmns}, {referance_columns}, RowNumber bigint)"
+    insert_from_ext_to_stg = f""" insert into {schema_name}.{table_name}_stg  SELECT {casted_colmns}, {full_sub_querys}, ROW_NUMBER()OVER(PARTITION BY {config_info['primary_key']}  ORDER BY sys_updated_on DESC) AS RowNumber FROM s3dataschema.{external_table}  """
+else:
+    Create_stage_table = f"create table {schema_name}.{table_name}_stg({collation_colmns}, RowNumber bigint)"
+    Create_main_table = f"create table {schema_name}.{table_name}({collation_colmns}, RowNumber bigint)"
+    insert_from_ext_to_stg = f""" insert into {schema_name}.{table_name}_stg  SELECT {casted_colmns}, ROW_NUMBER()OVER(PARTITION BY {config_info['primary_key']}  ORDER BY sys_updated_on DESC) AS RowNumber FROM s3dataschema.{external_table}  """
+
+truncate_stg = f""" truncate table  {schema_name}.{table_name}_stg """
+delete_dup_in_stg = f""" DELETE FROM {schema_name}.{table_name}_stg WHERE RowNumber > 1 """
+delete_dup_in_main = f""" DELETE FROM {schema_name}.{table_name} USING {schema_name}.{table_name}_stg WHERE {schema_name}.{table_name}.{config_info['primary_key']}  = {schema_name}.{table_name}_stg.{config_info['primary_key']} """
+
+insert_to_main = f""" INSERT INTO {schema_name}.{table_name} SELECT * FROM  {schema_name}.{table_name}_stg  """
+
+def compaction():
+    execute_query(create_external_table, "external table created successfully")
+    execute_query(alter_ext_table, "partition created successfully")
+    execute_query(Create_stage_table, "stage table created successfully")
+    execute_query(Create_main_table, "main table created successfully")
+    execute_query(truncate_stg, "truncate stage successfully")
+    execute_query(insert_from_ext_to_stg, "ext to stg query successfully")
+    execute_query(delete_dup_in_stg, "delete duplicats from stg query successfully")
+    execute_query(delete_dup_in_main, "delete duplicats from main query successfully")
+    execute_query(insert_to_main, "insert stg to main table query successfully")
+
+compaction()
+
+=======================================================================================================================
+[hvr2@ip-10-242-112-153 data_fabric_inno]$ cd innov
+[hvr2@ip-10-242-112-153 innov]$ ll
+total 44
+-rw-rw-r-- 1 hvr2 hvr2 1671 Sep 13 11:32 cmn_department.json
+-rw-rw-r-- 1 hvr2 hvr2 1603 Sep 13 11:48 sys_user.json
+-rw-rw-r-- 1 hvr2 hvr2 1198 Sep 13 12:18 x_nuvo_eam_building.json
+-rw-rw-r-- 1 hvr2 hvr2 1018 Sep 13 12:23 x_nuvo_eam_campus.json
+-rw-rw-r-- 1 hvr2 hvr2 5233 Sep 21 11:24 x_nuvo_eam_clinical_contracts.json
+-rw-rw-r-- 1 hvr2 hvr2 7295 Oct 23 02:42 x_nuvo_eam_clinical_devices.json
+-rw-rw-r-- 1 hvr2 hvr2 1336 Sep 21 11:26 x_nuvo_eam_clinical_models.json
+-rw-rw-r-- 1 hvr2 hvr2 1472 Sep 13 12:48 x_nuvo_eam_company.json
+-rw-rw-r-- 1 hvr2 hvr2 1464 Sep 13 12:51 x_nuvo_eam_make_model_requests.json
+
+Cat :--
+[hvr2@ip-10-242-112-153 innov]$ cat cmn_department.json
+{
+  "email_stake_holders":"503358774@ge.com",
+  "table_name": "cmn_department",
+  "schema_name": "nvo_fr",
+  "config_path": "/home/hvr2/.aws/redshift_connection.ini",
+  "connectionprofile": "Connections_INNOVATION",
+  "AWSPROFILE": "innovation",
+  "AWSBUCKET": "odp-us-innovation-ent-raw",
+  "filepath": "/home/hvr2/data_fabric_inno/",
+  "audit_schema_table": "ingestion_audit.audit_hvr_querybased",
+  "credentials": ["odp_datafabric", "2qCJr!3R2"],
+  "min_datetime":  ["2020-08-20", "11:02:24"],
+  "primary_key": "sys_id",
+  "referance_columns": ["u_account_number","u_building","u_contract_type"],
+  "column_dtypes": {
+       "u_account_number":      "object",
+       "u_active":"boolean",
+       "u_contract_value":      "object",
+       "u_processing_date_on_department":"object",
+       "u_bfe_department_contract_to_processing":"boolean",
+       "u_bfe_schedule_processing":"boolean",
+       "u_bfe_schedule_processing_date":"object",
+       "u_building":    "object",
+       "u_clinical_round_month":"object",
+       "u_contract_type":       "object",
+       "id":"object",
+       "sys_created_on":"datetime64",
+       "sys_created_by":"object",
+       "name":"object",
+       "description":"object",
+       "u_eligible_for_current_month":"boolean",
+       "u_monthly_billed_contract_value":"object",
+       "u_monthly_billed_retro_value":"object",
+       "u_record_id":"object",
+       "sys_id":"object",
+       "u_type_of_department":  "object",
+       "sys_updated_on":        "datetime64",
+       "sys_updated_by":"object",
+       "sys_mod_count":"object"
+  },
+  "sysparm_query": "ORDERBYsys_updated_on",
+  "limit": 1000,
+  "URL": "https://gehceamtemp.service-now.com/api/now/table"
+}
+
+
+===================================
+Log:--cmn_department
+1000 records loaded remaining - 60073
+max time ---  ['2020-11-14', '08:30:13'] -- at offset --  0
+(1000, 24) : Shape of this dataframe loaded to s3
+df loaded to s3
+1000 records loaded remaining - 60073
+max time ---  ['2020-11-14', '08:34:56'] -- at offset --  1000
+(1000, 24) : Shape of this dataframe loaded to s3
+df loaded to s3
+1000 records loaded remaining - 60073
+max time ---  ['2021-06-02', '10:26:32'] -- at offset --  2000
+(1000, 24) : Shape of this dataframe loaded to s3
+df loaded to s3
+1000 records loaded remaining - 60073
+max time ---  ['2021-08-09', '12:08:21'] -- at offset --  3000
+(1000, 24) : Shape of this dataframe loaded to s3
+df loaded to s3
+1000 records loaded remaining - 60073
+max time ---  ['2021-08-09', '12:08:40'] -- at offset --  4000
+(1000, 24) : Shape of this dataframe loaded to s3
+df loaded to s3
+1000 records loaded remaining - 60073
+max time ---  ['2021-08-09', '12:09:42'] -- at offset --  5000
+(1000, 24) : Shape of this dataframe loaded to s3
+df loaded to s3
+1000 records loaded remaining - 60073
+max time ---  ['2021-11-03', '22:30:06'] -- at offset --  6000
+(1000, 24) : Shape of this dataframe loaded to s3
+df loaded to s3
+1000 records loaded remaining - 60073
+max time ---  ['2022-04-01', '00:30:52'] -- at offset --  7000
+(1000, 24) : Shape of this dataframe loaded to s3
+df loaded to s3
+1000 records loaded remaining - 60073
+max time ---  ['2022-04-01', '00:32:55'] -- at offset --  8000
+(1000, 24) : Shape of this dataframe loaded to s3
+df loaded to s3
+1000 records loaded remaining - 60073
+max time ---  ['2022-04-01', '00:34:57'] -- at offset --  9000
+(1000, 24) : Shape of this dataframe loaded to s3
+df loaded to s3
+1000 records loaded remaining - 60073
+max time ---  ['2022-04-01', '00:36:51'] -- at offset --  10000
+(1000, 24) : Shape of this dataframe loaded to s3
+df loaded to s3

@@ -1,0 +1,76 @@
+[hvr2@ip-10-242-112-153 hr3data_inno]$ ll
+total 4
+drwxrwxr-x 2 hvr2 hvr2   61 Mar  1 09:01 data
+-rw-rw-r-- 1 hvr2 hvr2 3811 Mar  1 07:15 hr3data.py
+
+==========================================================
+hr3data.py:--
+import os
+import requests
+import glob
+import json
+import csv
+import pandas as pd
+from datetime import date
+from datetime import timedelta
+
+filepath = "/home/hvr2/hr3data_inno/data/"
+
+showpadfiles = glob.glob(filepath + '*.*')
+for f in showpadfiles:
+    os.remove(f)
+url_authorize ='https://fssfed.stage.ge.com:443/fss/as/token.oauth2?grant_type=client_credentials&client_id=J9oDd7DVWadryVXrf5Hrtuj7x2rOBpZw236VzpaGsRSds11q&client_secret=mSn93ZmTAiVjFPwlRHs7gxAs5jdQdAdf382eHUINfSNyFsNzDBUtlQdDW9zTQSun&scope=api'
+#url_authorize = 'https://fssfed.ge.com/fss/as/token.oauth2?grant_type=client_credentials&client_id=GEDIG_GEHCTrace_Prd_Client&client_secret=JZCdGqBd7iVi1jpgVul9inSR0x6DvRqvnfSc6RDuzNPdUy10sn2vpFpb98FVrIrx&scope=api'
+response2 = requests.post(url_authorize)
+accesstoken = 'Bearer ' + response2.json()['access_token']
+print(accesstoken)
+print(response2.json())
+textfile1 = open(filepath + 'hr3data.json', "w", encoding='utf-8-sig')
+ddd = []
+countrylist = ['AE', 'AF', 'AL', 'AM', 'AO', 'AR', 'AT', 'AU', 'AZ', 'BD', 'BE', 'BF', 'BG', 'BH', 'BN', 'BO', 'BR',
+               'BS', 'BW', 'BY', 'CA', 'CD', 'CG', 'CH', 'CI', 'CL', 'CM', 'CN', 'CO', 'CR', 'CY', 'CZ', 'DE', 'DK',
+               'DO', 'DZ', 'EC', 'EE', 'EG', 'ES', 'ET', 'FI', 'FR', 'GB', 'GE', 'GF', 'GH', 'GP', 'GR', 'GT', 'GU',
+               'GY', 'HK', 'HN', 'HR', 'HU', 'ID', 'IE', 'IL', 'IN', 'IQ', 'IR', 'IS', 'IT', 'JM', 'JO', 'JP', 'KE',
+               'KG', 'KH', 'KR', 'KW', 'KZ', 'LB', 'LK', 'LT', 'LV', 'LY', 'MA', 'MD', 'MK', 'MM', 'MQ', 'MT', 'MU',
+               'MX', 'MY', 'MZ', 'NC', 'NG', 'NI', 'NL', 'NO', 'NP', 'NZ', 'OM', 'PA', 'PE', 'PF', 'PH', 'PK', 'PL',
+               'PM', 'PR', 'PS', 'PT', 'PY', 'QA', 'RE', 'RO', 'RS', 'RU', 'RW', 'SA', 'SD', 'SE', 'SG', 'SI', 'SK',
+               'SN', 'SV', 'SY', 'TH', 'TN', 'TR', 'TT', 'TW', 'TZ', 'UA', 'UG', 'US', 'UY', 'UZ', 'VE', 'VN', 'YE',
+               'ZA', 'ZM', 'ZW']
+
+
+
+for i in countrylist:
+    url = f'https://dev.api.ge.com/hr-api-test/worker/secured/search/people?q=country%3A{i}+AND+industryFocusGroupName%3A%22GE+Healthcare%22&pagesize=100&page=1'
+    print('country URL : ' + url)
+    response = requests.get(url, headers={'Authorization': accesstoken})
+    totalpagecount = response.json()['totalPageCount']
+    totalpagecountrange = range(totalpagecount)
+    for j in totalpagecountrange:
+        page = int(j) + 1
+        url1 = f'https://dev.api.ge.com/hr-api-test/worker/secured/search/people?q=country%3A{i}+AND+industryFocusGroupName%3A%22GE+Healthcare%22&pagesize=100&page={page}'
+        print('country dta URL : ' + url1)
+        pageresponse = requests.get(url1, headers={'Authorization': accesstoken})
+        ss = pageresponse.json()
+        if (pageresponse.status_code == 200 and len(pageresponse.json()['data']) != 0):
+            for k in pageresponse.json()['data']:
+                geHireDateval = k.get('geHireDate')
+                adjustedServiceDateval = k.get('adjustedServiceDate')
+                if geHireDateval != None and adjustedServiceDateval != None:
+                    publicData = k['publicData']
+                    publicData['geHireDate'] = k['geHireDate']
+                    publicData['adjustedServiceDate'] = k['adjustedServiceDate']
+                    ddd.append(publicData)
+                else:
+                    publicData = k['publicData']
+                    publicData['geHireDate'] = None
+                    publicData['adjustedServiceDate'] = None
+                    ddd.append(publicData)
+textfile1.write(json.dumps(ddd))
+
+with open(filepath + 'hr3data.json', encoding='utf-8-sig') as inputfile:
+    df = pd.read_json(inputfile)
+    df.columns = df.columns.str.lower()
+df.to_csv(filepath + 'hr3data.csv', encoding='utf-8-sig', index=False, quotechar='"', quoting=csv.QUOTE_ALL)
+
+to :-- S3
+aws s3 cp /home/hvr2/hr3data_inno/data/ s3://odp-us-innovation-ent-raw/flat_file/hr_api/year=2024/month=03/day=01/ --profile innovation --recursive

@@ -1,0 +1,205 @@
+ukg_attestation_report:--
+#! /bin/bash
+
+echo "execution started"
+
+python3 /home/hvr2/ukg_attestation_report/ukg_attestation_report.py '/home/hvr2/ukg_attestation_report/data/' '1CaLSZcZTyfpHvr7P0G52gj4s8gshLxG' 'https://gehealthcare-uat.npr.mykronos.com/api/authentication/access_token' 'username=504006925&password=Kronos#123kronos&client_id=ArlQ8QvPhj9DLXsL2Kz5RWRvz3cG1kKo&client_secret=edTsUCJRWf18gSc3&grant_type=password&auth_chain=OAuthLdapService' 'https://gehealthcare-uat.npr.mykronos.com/api/v1/platform/report_executions' 'https://gehealthcare-uat.npr.mykronos.com/api/v1/platform/report_executions/' 'MyTime Attestation Report' 'mytimeattestationreport' 'hdl_wfm_fnd_data_sensitive' 'ukg_attestation_report' '503289728@ge.com' '/home/hvr2/.aws/redshift_connection.ini' 'Connections_WFMINNO' 'Connections_INNOVATION'
+
+echo "execution ended"
+
+ukg_attestation_report.py:--
+
+import pandas
+
+# Add these lines to use custom logger
+import traceback
+import sys
+
+sys.path.insert(0, r'/home/hvr2/.aws/logger_module')
+from custom_logger import *
+import os
+import json
+import requests
+import glob
+import configparser
+import psycopg2
+import sqlalchemy as sa
+import pandas as pd
+import psycopg2.extras as extras
+import glob
+import os, sys
+from boxsdk import JWTAuth, Client
+from datetime import datetime, timezone, timedelta
+from sqlalchemy import create_engine, types
+
+# Add these lines to use custom logger
+log_folder_path = os.path.dirname(os.path.realpath(__file__))+ '/'
+log_file_name = 'ukg_attestation_report'  # log_file_name with extension
+_obj_custom_logger = custom_logger(log_folder_path, log_file_name)
+print_info, print_error, print_warning = _obj_custom_logger.print_info, _obj_custom_logger.print_error, _obj_custom_logger.print_warning
+
+########VARIABLES DECLARATIONS###########
+filePath = sys.argv[1]
+appkey = sys.argv[2]
+tokenurl = sys.argv[3]
+tokenpayload = sys.argv[4]
+reportlisturl = sys.argv[5]
+reportdetailsurl = sys.argv[6]
+reportname = sys.argv[7]
+filename = sys.argv[8]
+schemaname = sys.argv[9]
+tablename = sys.argv[10]
+ingestiondl = sys.argv[11]
+config_path = sys.argv[12]
+connection_profile = sys.argv[13]
+innconfig_path = sys.argv[12]
+innconnection_profile = sys.argv[14]
+
+
+######Get the WFM Database connections#############
+def read_config_file(filepath, connection):
+    config = configparser.ConfigParser()
+    config.read(filepath)
+    db_name = config[connection]['dbname']
+    user = config[connection]['user']
+    password = config[connection]['password']
+    host = config[connection]['host']
+    port = int(config[connection]['port'])
+    return db_name, user, password, host, port
+
+
+DBNAME, USER, PASS, HOST, PORT = read_config_file(config_path, connection_profile)
+
+
+######Get the Innovation Redshift Database connections#############
+def innread_config_file(filepath, connection):
+    config = configparser.ConfigParser()
+    config.read(filepath)
+    db_name = config[connection]['dbname']
+    user = config[connection]['user']
+    password = config[connection]['password']
+    host = config[connection]['host']
+    port = int(config[connection]['port'])
+    return db_name, user, password, host, port
+
+
+innDBNAME, innUSER, innPASS, innHOST, innPORT = innread_config_file(innconfig_path, innconnection_profile)
+
+
+#######Inseert Data into Redshift Tables###########
+def execute_values(conn, df, table):
+    tuples = [tuple(x) for x in df.to_numpy()]
+    cols = ','.join(list(df.columns))
+    # SQL query to execute
+    query = "INSERT INTO %s(%s) VALUES %%s" % (table, cols)
+    cursor = conn.cursor()
+    try:
+        extras.execute_values(cursor, query, tuples)
+        conn.commit()
+    except (Exception, psycopg2.DatabaseError) as error:
+        print_info("Error: %s" % error)
+        conn.rollback()
+        cursor.close()
+        return 1
+    print_info("the dataframe is inserted")
+    cursor.close()
+
+
+try:
+    path = filePath
+    showpadfiles = glob.glob(path + '*.*')
+    for f in showpadfiles:
+        os.remove(f)
+    print_info(DBNAME)
+    url1 = tokenurl
+    payload1 = tokenpayload
+    headers1 = {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'appkey': appkey
+    }
+    response1 = requests.request("POST", url1, headers=headers1, data=payload1)
+    access_token = response1.json()['access_token']
+
+    url2 = reportlisturl
+    payload2 = {}
+    headers2 = {
+        'Authorization': access_token,
+        'appkey': appkey,
+        'Content-Type': 'application/json'
+    }
+    response2 = requests.request("GET", url2, headers=headers2, data=payload2)
+    reports_list = response2.json()
+    reportobj = []
+    for report in reports_list:
+        listreportname = report['report']['qualifier']
+        if listreportname == reportname:
+            reportobj.append(report)
+
+    latest_date = sorted(reportobj, key=lambda i: i["runEndDateTime"], reverse=True)[0]
+    reportid = latest_date['id']
+    latestrunEndDateTime = latest_date['runEndDateTime'].split('T')[0]
+    print_info('RunEndDate:' + latestrunEndDateTime)
+    print_info(reportid)
+    conn2 = create_engine(f"postgresql://{innUSER}:{innPASS}@{innHOST}:{innPORT}/{innDBNAME}").connect()
+    audit_df = pd.read_sql(
+        f"select max(max_timestamp) from audit_wfm_spinoff where table_name = '{tablename}' and max_timestamp!='None' and schema_name='{schemaname}'",
+        conn2)
+    max_timestamp = audit_df['max'][0]
+    print_info('DB Max Date:' + max_timestamp)
+    maxonlydate = max_timestamp.split('T')[0]
+    print_info(maxonlydate + "maxonlydate")
+    print_info(latestrunEndDateTime + "latestrunEndDateTime")
+    if latestrunEndDateTime > maxonlydate:
+        url3 = reportdetailsurl + str(reportid) + '/file'
+        print_info(url3)
+        payload3 = {}
+        headers3 = {
+            'Authorization': access_token,
+            'appkey': appkey,
+            'Content-Type': 'application/json'
+        }
+        response3 = requests.request("GET", url3, headers=headers3, data=payload3)
+        res = response3.text
+        print_info(filePath + filename + '.csv')
+        file = open(filePath + filename + '.csv', 'a')
+        file.write(res)
+        file.close()
+
+        conn = psycopg2.connect(dbname=DBNAME, user=USER, password=PASS, host=HOST, port=PORT)
+
+        df = pd.read_csv(filePath + filename + '.csv', encoding='unicode_escape')
+        df.columns = df.columns.str.replace('&', '')
+        df.columns = df.columns.str.replace('.', '_')
+        df.columns = df.columns.str.replace(' ', '_')
+        df.columns = df.columns.str.replace('-', '_')
+        df.columns = df.columns.str.replace('/', '')
+        df.columns = df.columns.str.replace('(', '')
+        df.columns = df.columns.str.replace(')', '')
+        df.columns = df.columns.str.lower()
+        df.rename(columns={'reg__abs': 'reg_abs'}, inplace=True)
+        df['data_origin'] = schemaname
+        df['posting_agent'] = reportname
+        df['load_dtm'] = datetime.now()
+        df = df.where(pd.notnull(df), None)
+        print_info(df.columns)
+        print_info(schemaname + '.' + tablename)
+        # execute_values(conn, df, schemaname + '.' + tablename)
+        print_info("Successfully data loaded to RS")
+        # conn2 = create_engine(f"postgresql://{innUSER}:{innPASS}@{innHOST}:{innPORT}/{innDBNAME}").connect()
+        # audit_rc = [{'schema_name': schemaname, 'table_name': tablename, 'hubdbname': 'ushvr09','source_date_column': 'load_dtm','max_timestamp': datetime.now()}]
+        # pd.DataFrame(audit_rc).to_sql('audit_wfm_spinoff', conn2, if_exists='append')
+        print_info("Successfully data loaded to audit tables")
+
+except:
+    os.system(f'echo "Exception from the archived files" | mailx -s "some error occurred while executing" {ingestiondl} ')
+    print_error(str(traceback.format_exc()))
+
+
+===================================================================
+[hvr2@ip-10-242-112-153 ukg_attestation_report]$ ll
+total 28
+drwxrwxr-x 2 hvr2 hvr2     6 Dec 12 17:00 data
+-rw-rw-r-- 1 hvr2 hvr2   610 Feb 29 17:00 error.log
+-rw-rw-r-- 1 hvr2 hvr2   827 Oct 16 13:07 fullload.sh
+-rw-rw-r-- 1 hvr2 hvr2 11460 Feb 29 17:00 ukg_attestation_report.csv
+-rw-rw-r-- 1 hvr2 hvr2  7352 Feb  1 06:52 ukg_attestation_report.py

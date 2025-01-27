@@ -1,0 +1,310 @@
+-----------
+17-10-2024:----
+
+PGPASSWORD='HrbIm&fs3Yz^9K' psql -h odp-us-prod-hr-redshift.odp.health.ge.com -U 504009592 -d gehc_data -p 5439
+
+gehc_data=> \dt hdl_wfm_fnd_data_sensitive.*;
+                               List of relations
+           schema           |             name              | type  |   owner
+----------------------------+-------------------------------+-------+-----------
+ hdl_wfm_fnd_data_sensitive | ukg_approval_summary_biweekly | table | 504009592
+ hdl_wfm_fnd_data_sensitive | ukg_approval_summary_weekly   | table | 504009592
+
+
+US172736 -- /home/hvr2/learn_train_dataing_inv/fullload.sh schedule
+			 -- /home/hvr/learn_train_dataing_pro/fullload.sh
+			 
+LEARN_TRAIN_DATAING
+ 
+0 7 * * * hvr nohup sh /home/hvr/staffing_candidate_security/load.sh >/home/hvr/staffing_candidate_security/main.log 2>&1 &
+
+ 
+00 10 * * * hvr nohup sh /home/hvr/learn_train_dataing_pro/fullload.sh >  /home/hvr/learn_train_dataing_pro/main.log 2>&1 &
+
+LEARN_TRAIN_DATAING
+ 
+00 10 * * * hvr2 nohup sh /home/hvr2/learn_train_dataing_inv/fullload.sh >  /home/hvr2/learn_train_dataing_inv/main.log 2>&1 &
+
+Platf
+Script 
+Schedule
+
+
+
+
+US179366 -- siva bro
+ 
+path:/python3 /home/hvr/US174864/lgs_brokerspend_region_country.py
+
+
+
+US176890	Commercial|VC Analytics|Intercontinental - Job scheduling in Production
+US176891	Commercial|VC Analytics|USCAN- Job scheduling in Production
+US176892	Commercial|VC Analytics|EMEA- Job scheduling in Production
+
+30 6 30 6,9 * hvr2 nohup sh /home/hvr2/box_ops/obso_box/main.sh > /home/hvr2/box_ops/obso_box/main.log 2>&1 &
+
+00 10 * * * lh080833 nohup sh /home/lh080833/sor_scripts/servicemax/main_servicemax_1.sh > /home/lh080833/sor_scripts/servicemax/main_servicemax_1.log 2>&1 &
+
+LEARN_TRAIN_DATAING
+ 
+00 10 * * * hvr2 nohup sh /home/hvr2/learn_train_dataing_inv/fullload.sh >  /home/hvr2/learn_train_dataing_inv/main.log 2>&1 &
+
+
+
+
+log_folder_path = os.path.dirname(os.path.realpath(__file__))+"/"
+
+
+
+s3://odp-us-innovation-ent-raw/
+
+s3://odp-us-prod-ent-raw/
+
+
+
+dqfilerequest
+dqfilerequest_prod
+dqfilerequestpromotion
+dsp_dataingestion
+
+
+https://pse-gehealthcare.gpcloudservice.com/
+
+Data Ingestion with Python Cookbook
+
+USER STORY:--
+US149056 -- 06-19-23 (inno)  -- WFM UKG Dimensions data through tool's API. 
+US156394 -- 07-03-23 (inno)  -- ServiceMax object
+US151674 -- 07-17-23 (inno)  -- WFM UKG MyTime historical data
+US156804 -- 07-31-23 (pro)   -- HVR(work)
+US158073 -- 7-31-23 (inno)   -- WFM UKG Dimensions data through tool's API
+US160862 -- prod  --- ServiceMax
+US159734 -- WFM (prod) -- UKG Dimensions Reports
+US158949 -- Nuvolo (prod)
+US161372 -- Nuvolo (inno)
+US162592 --ServiceMax (inno)
+US163612 -- Nuvolo (prod)
+US167719 -- Nuvolo (Production) 
+US164013 -- ServiceMax (Production)
+US161942 --  Prod -- US151674
+US172721 -- ServiceMax
+US174233 -- CDF (inno) -
+US174620 -- HR API (inno)
+US174622 -- HR API (Prod)
+US174235--  CDF (Prod)
+US174415 -- One model (inno)
+US176853 -- MAPP (inno) Direct ingestion
+US176854 -- MAPP (prod) Direct ingestion
+
+
+
+
+Log:-- 
+US149056 -- 06-19-23 (inno)
+US156394 -- 07-03-23 (inno) ServiceMax
+US151674 -- 07-17-23 (inno) -- One time load
+US158073 sjfvhbd  -- 7-31-23 (inno) -- completed
+US161372 -- Nuvolo (inno)
+US162592 --ServiceMax (inno)
+US174233 kvjndfh -- CDF (inno) -completed cdfwelcome -- UPdated
+US174620 edhcfs -- HR API (inno)  -- hr3data  --- UPdated
+US174415 duhfcidhr -- One model (inno) -- drm_classifiaction -
+US176853 hduvg -- -- MAPP (inno) Direct ingestion  -completed -- 
+
+
+1.drm_classifiaction -- 179
+2.chu_modality_check -- 31 
+3.regional_check -- 510
+4.modality_enablement  ---  
+5.modality_segment_blacklist --71
+6.modality_dictionary --17 
+7.product_group_backlist --99     
+8.symptom  -- utf-8 --1031
+9.sca --11711
+
+
+
+
+US181662 -- /home/hvr/US178972  -- 196
+US180221  -- qualifiedchat -- 196
+US181307
+
+WFM prod string:
+
+PGPASSWORD='NLjgRpSVspGdITkSJPsTOBbwR' psql -h odp-us-innovation-postgres-db.cxzrm3enxxmy.us-east-1.rds.amazonaws.com -p 5432 -U odp_us_in_adm -d ushvr08
+
+Prod String:
+
+PGPASSWORD='B54nU6#dd3aX' psql -h us-prod-etl-alpha-redshift.cjn5iynjwss7.us-east-1.redshift.amazonaws.com -p 5439 -U 504008218 -d gehc_data
+
+
+
+
+
+
+python3 /home/hvr2/ukg_approval_summary_biweekly/ukg_approval_summary_biweekly.py '/home/hvr2/ukg_approval_summary_weekly/data/' '1CaLSZcZTyfpHvr7P0G52gj4s8gshLxG' 'https://gehealthcare-uat.npr.mykronos.com/api/authentication/access_token' 'username=NP700002000&password=Kronos@123kronos&client_id=ArlQ8QvPhj9DLXsL2Kz5RWRvz3cG1kKo&client_secret=edTsUCJRWf18gSc3&grant_type=password&auth_chain=OAuthLdapService' 'https://gehealthcare-uat.npr.mykronos.com/api/v1/platform/report_executions' 'https://gehealthcare-uat.npr.mykronos.com/api/v1/platform/report_executions/' 'MyTime HC Approval Summary Report-BiWeekly' 'mytimehcapprovalsummaryreportbiweekly' 'hdl_wfm_fnd_data_sensitive' 'ukg_approval_summary_biweekly' '503358774@gehealthcare.com' '/home/hvr2/.aws/redshift_connection.ini' 'Connections_WFMINNO' 'Connections_INNOVATION'
+
+
+from datetime import datetime
+start_time = datetime.now()
+# do your work here
+end_time = datetime.now()
+
+
+
+/home/hvr2/ingestion_scripts/api
+
+#!/bin/bash
+python3 /home/hvr2/ingestion_scripts/api/cdf_welcome.py
+year=$(date '+%Y')
+month=$(date '+%m')
+day=$(date '+%d')
+aws s3 cp /home/hvr2/ingestion_scripts/api/data/ s3://odp-us-innovation-ent-raw/welcome/year=$year/month=$month/day=$day/ --profile innovation --recursive
+gehc_data=> \dt *.hdl_wfm_fnd_data_sensitive;
+No matching relations found.
+gehc_data=> \dt *.audit_wfm_spinoff;
+               List of relations
+ schema |       name        | type  |   owner
+--------+-------------------+-------+-----------
+ public | audit_wfm_spinoff | table | 504008218
+(1 row)
+
+gehc_data=> delete from public.audit_wfm_spinoff
+gehc_data-> where max_timestamp=2024-02-01 07:00:24.997251
+gehc_data-> ;
+ERROR:  syntax error at or near "07"
+LINE 2: where max_timestamp=2024-02-01 07:00:24.997251
+                                       ^
+gehc_data=> delete from public.audit_wfm_spinoff
+where max_timestamp='2024-02-01 07:00:24.997251'
+;
+DELETE 1
+gehc_data=> select *  from audit_wfm_spinoff;
+ index |        schema_name         |          table_name           | hubdbname | source_date_column |       max_timestamp
+-------+----------------------------+-------------------------------+-----------+--------------------+----------------------------
+     0 | hdl_wfm_fnd_data_sensitive | ukg_approval_summary_biweekly | ushvr09   | load_dtm           | 2023-08-30 05:41:11.553563
+     0 | hdl_wfm_fnd_data_sensitive | ukg_approval_summary_weekly   | ushvr09   | load_dtm           | 2023-08-30 06:03:22.8324
+     0 | hdl_wfm_fnd_data_sensitive | ukg_approval_summary_weekly   | ushvr09   | load_dtm           | 2023-08-31 07:04:37.461904
+     0 | hdl_wfm_fnd_data_sensitive | ukg_approval_summary_weekly   | ushvr09   | load_dtm           | 2023-08-31 07:06:19.854112
+     0 | hdl_wfm_fnd_data_sensitive | ukg_approval_summary_weekly   | ushvr09   | load_dtm           | 2023-08-31 07:07:40.60269
+     0 | hdl_wfm_fnd_data_sensitive | ukg_approval_summary_biweekly | ushvr09   | load_dtm           | 2023-09-07 07:34:14.756099
+     0 | hdl_wfm_fnd_data_sensitive | ukg_approval_summary_weekly   | ushvr09   | load_dtm           | 2023-09-07 07:45:42.975244
+     0 | hdl_wfm_fnd_data_sensitive | ukg_approval_summary_weekly   | ushvr09   | load_dtm           | 2023-09-14 07:06:26.203503
+     0 | hdl_wfm_fnd_data_sensitive | ukg_approval_summary_weekly   | ushvr09   | load_dtm           | 2023-09-21 07:12:05.649671
+     0 | hdl_wfm_fnd_data_sensitive | ukg_approval_summary_biweekly | ushvr09   | load_dtm           | 2023-09-21 07:12:18.93092
+     0 | hdl_wfm_fnd_data_sensitive | ukg_approval_summary_weekly   | ushvr09   | load_dtm           | 2023-09-28 07:00:12.18698
+     0 | hdl_wfm_fnd_data_sensitive | ukg_approval_summary_weekly   | ushvr09   | load_dtm           | 2023-10-05 07:00:10.525877
+     0 | hdl_wfm_fnd_data_sensitive | ukg_approval_summary_biweekly | ushvr09   | load_dtm           | 2023-10-05 07:00:25.73489
+     0 | hdl_wfm_fnd_data_sensitive | ukg_approval_summary_weekly   | ushvr09   | load_dtm           | 2023-10-12 07:00:09.413883
+     0 | hdl_wfm_fnd_data_sensitive | ukg_approval_summary_weekly   | ushvr09   | load_dtm           | 2023-10-19 07:00:05.968853
+     0 | hdl_wfm_fnd_data_sensitive | ukg_approval_summary_biweekly | ushvr09   | load_dtm           | 2023-10-19 07:00:17.808682
+     0 | hdl_wfm_fnd_data_sensitive | ukg_approval_summary_weekly   | ushvr09   | load_dtm           | 2023-10-26 09:22:46.788417
+     0 | hdl_wfm_fnd_data_sensitive | ukg_approval_summary_weekly   | ushvr09   | load_dtm           | 2023-11-02 07:00:11.341145
+     0 | hdl_wfm_fnd_data_sensitive | ukg_approval_summary_biweekly | ushvr09   | load_dtm           | 2023-11-02 07:00:25.852542
+     0 | hdl_wfm_fnd_data_sensitive | ukg_approval_summary_weekly   | ushvr09   | load_dtm           | 2023-11-09 07:00:07.783503
+     0 | hdl_wfm_fnd_data_sensitive | ukg_approval_summary_weekly   | ushvr09   | load_dtm           | 2023-11-16 07:00:11.027454
+     0 | hdl_wfm_fnd_data_sensitive | ukg_approval_summary_biweekly | ushvr09   | load_dtm           | 2023-11-16 07:00:29.493278
+     0 | hdl_wfm_fnd_data_sensitive | ukg_approval_summary_weekly   | ushvr09   | load_dtm           | 2023-11-23 07:00:13.659576
+     0 | hdl_wfm_fnd_data_sensitive | ukg_approval_summary_weekly   | ushvr09   | load_dtm           | 2023-11-30 07:00:10.280126
+     0 | hdl_wfm_fnd_data_sensitive | ukg_approval_summary_biweekly | ushvr09   | load_dtm           | 2023-11-30 07:00:22.214561
+     0 | hdl_wfm_fnd_data_sensitive | ukg_approval_summary_weekly   | ushvr09   | load_dtm           | 2023-12-07 07:00:12.210393
+     0 | hdl_wfm_fnd_data_sensitive | ukg_approval_summary_weekly   | ushvr09   | load_dtm           | 2023-12-14 07:00:12.266399
+     0 | hdl_wfm_fnd_data_sensitive | ukg_approval_summary_biweekly | ushvr09   | load_dtm           | 2023-12-14 07:00:33.602009
+     0 | hdl_wfm_fnd_data_sensitive | ukg_approval_summary_weekly   | ushvr09   | load_dtm           | 2023-12-21 07:00:10.967427
+     0 | hdl_wfm_fnd_data
+	 
+select * from public.audit_wfm_spinoff
+where max_timestamp='2024-03-15 07:00:55.048583'
+
+hdl_wfm_fnd_data_sensitive
+
+select max(max_timestamp) from audit_wfm_spinoff;
+
+ select *  from audit_wfm_spinoff;
+ 
+  where table_name = '{tablename}'
+
+select max(max_timestamp) from audit_wfm_spinoff;
+
+delete from public.audit_wfm_spinoff where max_timestamp='2024-05-06 09:09:52.996812';
+
+select max(load_dtm)  from hdl_wfm_fnd_data_sensitive.ukg_approval_summary_weekly;
+
+
+select 'Table_name' as ukg_approval_summary_weekly,count(*) from hdl_wfm_fnd_data_sensitive.ukg_approval_summary_weekly 
+where load_dtm='2024-03-07 07:00:04.560244'
+group by load_dtm;
+
+
+ 2024-03-07 07:00:04.560244
+ 
+ 
+#! /bin/bash
+
+echo "execution started"
+
+python3 /home/hvr2/ukg_approval_summary_weekly/ukg_approval_summary_weekly.py '/home/hvr2/ukg_approval_summary_weekly/data/' '1CaLSZcZTyfpHvr7P0G52gj4s8gshLxG' 'https://gehealthcare-uat.npr.mykronos.com/api/authentication/access_token' 'username=NP700002000&password=Kronos@123kronos&client_id=ArlQ8QvPhj9DLXsL2Kz5RWRvz3cG1kKo&client_secret=edTsUCJRWf18gSc3&grant_type=password&auth_chain=OAuthLdapService' 'https://gehealthcare-uat.npr.mykronos.com/api/v1/platform/report_executions' 'https://gehealthcare-uat.npr.mykronos.com/api/v1/platform/report_executions/' 'MyTime HC Approval Summary Report-Weekly' 'mytimehcapprovalsummaryreportweekly' 'hdl_wfm_fnd_data_sensitive' 'ukg_approval_summary_weekly' '503358774@gehealthcare.com' '/home/hvr2/.aws/redshift_connection.ini' 'Connections_WFMINNO' 'Connections_INNOVATION'
+
+echo "execution ended"
+
+
+#! /bin/bash
+
+echo "execution started"
+
+python3 /home/hvr/ukg_approval_summary_biweekly/ukg_approval_summary_biweekly.py '/home/hvr/ukg_approval_summary_biweekly/data/' 'BdviWyTnPfpJqD6RHaSOd6vbgfY66hUA' 'https://gehealthcare.prd.mykronos.com/api/authentication/access_token' 'username=NP700002000&password=Kronos%40123&client_id=Z7YffrfwUA8bzMc84HzweUj4QQfL0jfk&client_secret=FG5LuKp2aZBrkMOg&grant_type=password&auth_chain=OAuthLdapService' 'https://gehealthcare.prd.mykronos.com/api/v1/platform/report_executions' 'https://gehealthcare.prd.mykronos.com/api/v1/platform/report_executions/' 'MyTime HC Approval Summary Report-Weekly' 'mytimehcapprovalsummaryreportweekly' 'hdl_wfm_fnd_data_sensitive' 'ukg_approval_summary_weekly' '503358774@ge.com' '/home/hvr/.aws/redshift_connection.ini' 'Connections_WFMPROD' 'Connections_PROD'
+
+python3 /home/hvr/ukg_approval_summary_biweekly/ukg_approval_summary_biweekly.py '/home/hvr/ukg_approval_summary_biweekly/data/' 'BdviWyTnPfpJqD6RHaSOd6vbgfY66hUA' 'https://gehealthcare.prd.mykronos.com/api/authentication/access_token' 'username=NP700002000&password=Kronos%40123&client_id=Z7YffrfwUA8bzMc84HzweUj4QQfL0jfk&client_secret=FG5LuKp2aZBrkMOg&grant_type=password&auth_chain=OAuthLdapService' 'https://gehealthcare.prd.mykronos.com/api/v1/platform/report_executions' 'https://gehealthcare.prd.mykronos.com/api/v1/platform/report_executions/' 'MyTime HC Approval Summary Report-BiWeekly' 'mytimehcapprovalsummaryreportbiweekly' 'hdl_wfm_fnd_data_sensitive' 'ukg_approval_summary_biweekly' '503358774@ge.com' '/home/hvr/.aws/redshift_connection.ini' 'Connections_WFMPROD' 'Connections_PROD'
+
+
+echo "execution ended"
+
+
+
+#! /bin/bash
+
+echo "execution started"
+
+python3 /home/hvr2/ukg_timedetail/ukg_timedetail.py '/home/hvr2/ukg_timedetail/data/' '1CaLSZcZTyfpHvr7P0G52gj4s8gshLxG' 'https://gehealthcare-uat.npr.mykronos.com/api/authentication/access_token' 'username=NP700002000&password=Kronos@123kronos&client_id=ArlQ8QvPhj9DLXsL2Kz5RWRvz3cG1kKo&client_secret=edTsUCJRWf18gSc3&grant_type=password&auth_chain=OAuthLdapService' 'https://gehealthcare-uat.npr.mykronos.com/api/v1/platform/report_executions' 'https://gehealthcare-uat.npr.mykronos.com/api/v1/platform/report_executions/' 'GE TimeDetail New' 'getimedetailnew' 'hdl_wfm_fnd_data_sensitive' 'ukg_timedetail' '503289728@ge.com' '/home/hvr2/.aws/redshift_connection.ini' 'Connections_WFMINNO' 'Connections_INNOVATION'
+
+echo "execution ended"
+
+
+
+
+#! /bin/bash
+
+echo "execution started"
+
+python3 /home/hvr2/ukg_detailed_hours_srv/ukg_detailed_hours_srv.py '/home/hvr2/ukg_detailed_hours_srv/data/' '1CaLSZcZTyfpHvr7P0G52gj4s8gshLxG' 'https://gehealthcare-uat.npr.mykronos.com/api/authentication/access_token' 'username=NP700002000&password=Kronos@123kronos&client_id=ArlQ8QvPhj9DLXsL2Kz5RWRvz3cG1kKo&client_secret=edTsUCJRWf18gSc3&grant_type=password&auth_chain=OAuthLdapService' 'https://gehealthcare-uat.npr.mykronos.com/api/v1/platform/report_executions' 'https://gehealthcare-uat.npr.mykronos.com/api/v1/platform/report_executions/' 'MyTime Report Detailed Hours_SRV' 'mytimereportdetailedhourssrv' 'hdl_wfm_fnd_data_sensitive' 'ukg_detailed_hours_srv' '503289728@ge.com' '/home/hvr2/.aws/redshift_connection.ini' 'Connections_WFMINNO' 'Connections_INNOVATION'
+
+echo "execution ended"
+
+
+
+#! /bin/bash
+
+echo "execution started"
+python3 /home/hvr2/ukg_detailed_hours_hc/ukg_detailed_hours_hc.py '/home/hvr2/ukg_detailed_hours_hc/data/' '1CaLSZcZTyfpHvr7P0G52gj4s8gshLxG' 'https://gehealthcare-uat.npr.mykronos.com/api/authentication/access_token' 'username=NP700002000&password=Kronos@123kronos&client_id=ArlQ8QvPhj9DLXsL2Kz5RWRvz3cG1kKo&client_secret=edTsUCJRWf18gSc3&grant_type=password&auth_chain=OAuthLdapService' 'https://gehealthcare-uat.npr.mykronos.com/api/v1/platform/report_executions' 'https://gehealthcare-uat.npr.mykronos.com/api/v1/platform/report_executions/' 'MyTime Report Detailed Hours_HC' 'mytimereportdetailedhourshc' 'hdl_wfm_fnd_data_sensitive' 'ukg_detailed_hours_hc' '503289728@ge.com' '/home/hvr2/.aws/redshift_connection.ini' 'Connections_WFMINNO' 'Connections_INNOVATION'
+
+echo "execution ended"
+
+
+#! /bin/bash
+
+echo "execution started"
+
+python3 /home/hvr2/ukg_attestation_report/ukg_attestation_report.py '/home/hvr2/ukg_attestation_report/data/' '1CaLSZcZTyfpHvr7P0G52gj4s8gshLxG' 'https://gehealthcare-uat.npr.mykronos.com/api/authentication/access_token' 'username=NP700002000&password=Kronos@123kronos&client_id=ArlQ8QvPhj9DLXsL2Kz5RWRvz3cG1kKo&client_secret=edTsUCJRWf18gSc3&grant_type=password&auth_chain=OAuthLdapService' 'https://gehealthcare-uat.npr.mykronos.com/api/v1/platform/report_executions' 'https://gehealthcare-uat.npr.mykronos.com/api/v1/platform/report_executions/' 'MyTime Attestation Report' 'mytimeattestationreport' 'hdl_wfm_fnd_data_sensitive' 'ukg_attestation_report' '503289728@ge.com' '/home/hvr2/.aws/redshift_connection.ini' 'Connections_WFMINNO' 'Connections_INNOVATION'
+
+echo "execution ended"
+
+#! /bin/bash
+
+echo "execution started"
+
+python3 /home/hvr2/ukg_approval_history/ukg_approval_history.py '/home/hvr2/ukg_approval_history/data/' '1CaLSZcZTyfpHvr7P0G52gj4s8gshLxG' 'https://gehealthcare-uat.npr.mykronos.com/api/authentication/access_token' 'username=NP700002000&password=Kronos@123kronos&client_id=ArlQ8QvPhj9DLXsL2Kz5RWRvz3cG1kKo&client_secret=edTsUCJRWf18gSc3&grant_type=password&auth_chain=OAuthLdapService' 'https://gehealthcare-uat.npr.mykronos.com/api/v1/platform/report_executions' 'https://gehealthcare-uat.npr.mykronos.com/api/v1/platform/report_executions/' 'mytimeapprovalhistoryreport' 'hdl_wfm_fnd_data_sensitive' 'ukg_approval_history' '503358774@ge.com' '/home/hvr2/.aws/redshift_connection.ini' 'Connections_WFMINNO' 'Connections_INNOVATION'
+
+echo "execution ended"
+
+

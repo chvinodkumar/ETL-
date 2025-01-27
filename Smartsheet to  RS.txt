@@ -1,0 +1,136 @@
+[hvr@ip-10-242-109-196 US174779]$ ll
+total 16
+-rw-rw-r--. 1 hvr hvr  291 Jan  3 08:54 customs_global_landscape.json
+-rw-rw-r--. 1 hvr hvr 2938 Jan  3 09:06 customs_global_landscape.py
+-rw-rw-r--. 1 hvr hvr  177 Jan 22 05:41 customs_global_landscape.sh
+-rw-rw-r--. 1 hvr hvr   48 Mar  1 01:00 error.log
+
+=============================
+[hvr@ip-10-242-109-196 US174779]$ cat customs_global_landscape.sh
+#! /bin/bash
+
+echo "execution started"
+
+python3 /home/hvr/US174779/customs_global_landscape.py --infile /home/hvr/US174779/customs_global_landscape.json
+
+echo "execution ended"
+====================================================================
+[hvr@ip-10-242-109-196 US174779]$ cat /home/hvr/US174779/customs_global_landscape.json
+{
+
+    "schema_name":"isc_box_file_fr",
+
+    "table_name":"customs_global_landscape",
+
+    "smartsheet_id":"7355258683844484",
+
+    "token":"2GWV1KIIxRjwDfGC2T413sg1YtMo4KKOtzyeU",
+
+    "config_path":"/home/hvr/.aws/redshift_connection.ini",
+
+    "connection_profile":"Connections_PROD"
+
+}
+
+================================================
+
+[hvr@ip-10-242-109-196 US174779]$ cat /home/hvr/US174779/customs_global_landscape.py
+import requests,json
+import pandas as pd
+from sqlalchemy import create_engine,types
+import configparser
+import psycopg2
+import sqlalchemy as sa
+import argparse
+import numpy as np
+from datetime import datetime,timezone
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--infile', nargs=1, help="JSON file to be processed", type=argparse.FileType('r'))
+arguments = parser.parse_args()
+
+
+# Loading a JSON object returns a dict.
+config_info = json.load(arguments.infile[0])
+
+config_path = config_info['config_path']
+connection_profile = config_info['connection_profile']
+
+
+def read_config_file(filepath, connection):
+    config = configparser.ConfigParser()
+    config.read(filepath)
+    db_name = config[connection]['dbname']
+    user = config[connection]['user']
+    password = config[connection]['password']
+    host = config[connection]['host']
+    port = int(config[connection]['port'])
+    return db_name, user, password, host, port
+
+DBNAME, USER, PASS, HOST, PORT = read_config_file(config_path, connection_profile)
+conn = sa.create_engine(f"postgresql://{USER}:{PASS}@{HOST}:{PORT}/{DBNAME}").connect().execution_options(autocommit=True)
+curt_date  = datetime.today()
+
+id=config_info['smartsheet_id']
+table_name=config_info['table_name']
+schema_name = config_info['schema_name']
+token=config_info['token']
+
+def sqlcol(dfparam):
+    dtypedict = {}
+    for i, j in zip(dfparam.columns, dfparam.dtypes):
+        if "object" in str(j):
+            dtypedict.update({i: types.VARCHAR(65000)})
+    return dtypedict
+
+
+proxy = { "https": "https://http-proxy.health.ge.com:88"}
+headers = { "Authorization" : f"Bearer {token}"}
+payload = {}
+
+
+try:
+    url = f"https://api.smartsheet.com/2.0/sheets/{id}"
+    response = requests.request("GET", url, headers=headers, data=payload)
+except Exception as err:
+    print("Authenication Failed")
+    print(err)
+
+try:
+    data_cols = response.json()['columns']
+    data_rows = response.json()['rows']
+except Exception as err:
+    print('json error')
+    print(err)
+
+columns={}
+for item in data_cols:
+    columns.update({item['id']:item['title']})
+
+records=[]
+for row in data_rows:
+    record={}
+    for cell in row['cells']:
+        if "value" in cell:
+            record.update({columns[cell['columnId']]:cell['value']})
+        else:
+            record.update({columns[cell['columnId']]:''})
+    records.append(record)
+
+df = pd.DataFrame(records)
+df["ingestion_timestamp"]=curt_date
+df.columns=pd.Series(df.columns).replace(' ','_',regex=True).str.lower()
+
+
+try:
+    print("Loading to DB")
+    #truncate_query=f"""truncate table {schema_name}.{table_name}"""
+    con=psycopg2.connect(dbname=DBNAME, user=USER, password=PASS, host=HOST, port=PORT)
+    connection=con.cursor()
+    connection.execute(truncate_query)
+    df.to_sql(table_name,  con=conn, schema=schema_name, if_exists='append', method="multi", chunksize=1000, index=False, dtype=sqlcol(df))
+except Exception as err:
+    print(err)
+
+
+

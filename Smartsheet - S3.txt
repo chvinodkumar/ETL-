@@ -1,0 +1,46 @@
+[hvr2@ip-10-242-112-153 ~]$ cd US178970
+[hvr2@ip-10-242-112-153 US178970]$ ll
+total 12
+-rw-rw-r-- 1 hvr2 hvr2  873 Feb 13 09:51 createprogramid.py
+drwxrwxr-x 2 hvr2 hvr2   35 Mar  1 05:00 data
+-rw-rw-r-- 1 hvr2 hvr2  267 Feb 12 11:29 fullload.sh
+-rw-rw-r-- 1 hvr2 hvr2 1657 Mar  1 05:00 main.log
+[hvr2@ip-10-242-112-153 US178970]$ cat fullload.sh
+#!/bin/bash
+python3 /home/hvr2/US178970/createprogramid.py
+year=$(date '+%Y')
+month=$(date '+%m')
+day=$(date '+%d')
+aws s3 cp /home/hvr2/US178970/data/ s3://odp-us-innovation-ent-raw/smartsheet_USCAN/year=$year/month=$month/day=$day/ --profile innovation --recursive
+==========================
+
+[hvr2@ip-10-242-112-153 US178970]$ cat /home/hvr2/US178970/createprogramid.py
+import os
+import json
+import requests
+import glob
+
+from datetime import datetime
+import pandas as pd
+import psycopg2
+import psycopg2.extras as extras
+
+filePath = "/home/hvr2/US178970/data/"
+showpadfiles = glob.glob(filePath + '*.*')
+for f in showpadfiles:
+    os.remove(f)
+
+
+token = "2GWV1KIIxRjwDfGC2T413sg1YtMo4KKOtzyeU"
+proxy = {"https": "https://http-proxy.health.ge.com:88"}
+hedrs = {"Authorization": f"Bearer {token}", "Accept": "text/csv"}
+url = f"https://api.smartsheet.com/2.0/sheets/6759768047701892"
+response = requests.get(url, headers=hedrs)
+response.raise_for_status()
+sheet = response.content
+with open(filePath + "createprogramid_v2.csv", 'wb+') as f:
+    f.write(sheet)
+df = pd.read_csv(filePath + "creategrogramid_v2.csv")
+rdf = df.where(pd.notnull(df), None)
+rdf = rdf.dropna(how='all')
+rdf = rdf.to_csv(filePath + "createprogramid_v2.csv", index=False)

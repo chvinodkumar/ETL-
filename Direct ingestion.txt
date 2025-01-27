@@ -1,0 +1,87 @@
+[hvr2@ip-10-242-112-153 learn_train_dataing_inv]$ ll
+total 76
+drwxrwxr-x 2 hvr2 hvr2    51 Mar  1 10:00 data
+-rw-rw-r-- 1 hvr2 hvr2   361 Feb  8 08:44 fullload.sh
+-rw-rw-r-- 1 hvr2 hvr2  2705 Feb  8 08:47 learntraindataing.py
+-rw-rw-r-- 1 hvr2 hvr2 67975 Mar  1 10:00 main.log
+===========================================
+fullload.sh :-- 
+
+
+[hvr2@ip-10-242-112-153 learn_train_dataing_inv]$ cat fullload.sh
+#!/bin/bash
+python3 /home/hvr2/learn_train_dataing_inv/learntraindataing.py
+
+
+year=$(date '+%Y-%m-%d %H:%M:%S')
+year=$(date '+%Y')
+month=$(date '+%m')
+day=$(date '+%d')
+aws s3 cp /home/hvr2/learn_train_dataing_inv/data/  s3://odp-us-innovation-ent-raw/flat_file/ge_learning_training_history/year=$year/month=$month/day=$day/ --profile innovation  --recursive
+
+===============================================================================================
+
+[hvr2@ip-10-242-112-153 learn_train_dataing_inv]$ cat learntraindataing.py
+import glob
+
+import os
+import openpyxl
+import psycopg2
+import psycopg2.extras as extras
+from boxsdk import JWTAuth, Client
+import json, csv, sys
+from datetime import datetime, timezone, timedelta
+import re
+import pandas as pd
+import zipfile
+import io
+import numpy as np
+from pyxlsb import open_workbook as open_xlsb
+
+def getAccessToBox(JWT_file_path):
+    print("START at", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"), ":", "getAccessToBox(",
+          "JWT_file_path=", JWT_file_path, ")")
+    auth = JWTAuth.from_settings_file(JWT_file_path)
+    client = Client(auth)
+    print("END at", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"), ":", "getAccessToBox")
+    return client
+def getFileWithChangeName(client, file_id, dest_location, box_folder_id):
+    print("START at", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"), ":", "getFileWithChangeName(", "client",
+          ", file_id=", file_id, ", dest_location=", dest_location, ", box_folder_id=", box_folder_id, ")")
+    file_name = client.file(file_id).get().name
+    file_name1 = file_name[:-4]
+    file_ext = file_name.split('.')[1]
+    if file_name1 == '191015_002875__EUR_SSO_Completions':
+       open_file = open(dest_location + file_name, 'wb')
+       client.file(file_id).download_to(open_file)
+       print(file_name1)
+       with zipfile.ZipFile(dest_location + file_name, 'r') as zip_ref:
+          zip_ref.extractall(dest_location)
+       os.chdir(dest_location)
+       os.remove('191015_002875__EUR_SSO_Completions.zip')
+       open_file.close()
+
+def getFiles(client, folder_id, Files_Stage_location, file_name_pattern):
+    print("START at", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"), ":", "getFiles(", "client",
+          ", folder_id=", folder_id, ", Files_Stage_location=", Files_Stage_location, ", file_name_pattern=",
+          file_name_pattern, ")")
+    filesLoaded = list()
+    for item in client.folder(folder_id).get_items():
+        if item.type == "file":
+            getFileWithChangeName(client, item.id, Files_Stage_location, folder_id)
+            filesLoaded.append(item)
+    print("END at", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"), ":", "getFiles")
+    return filesLoaded
+
+if __name__ == "__main__":
+    cur_date = datetime.now()
+    past_date = cur_date - timedelta(days=0)
+    dt = past_date.strftime("%m.%d.%Y")
+    folders = ['215869204911']
+    filepath = '/home/hvr2/learn_train_dataing_inv/data/'
+    files = glob.glob(filepath + '*.*')
+    for f in files:
+        os.remove(f)
+    client = getAccessToBox('/home/hvr2/.aws/conf.json')
+    for folder in folders:
+        getFiles(client, folder, '/home/hvr2/learn_train_dataing_inv/data/', f'*')

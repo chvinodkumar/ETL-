@@ -1,0 +1,187 @@
+[hvr@ip-10-242-109-196 US174864]$ ll
+total 24
+drwxrwxr-x. 2 hvr hvr    6 Feb 29 17:00 data
+-rw-rw-r--. 1 hvr hvr 5258 Jan  3 09:58 lgs_brokerspend_region_country.py
+-rw-rw-r--. 1 hvr hvr 6508 Feb 15 12:06 lgs_brokerspend_region_country_update.py
+-rw-rw-r--. 1 hvr hvr  409 Feb 15 12:15 load.sh
+-rw-rw-r--. 1 hvr hvr  461 Mar  1 05:00 main.log
+[hvr@ip-10-242-109-196 US174864]$ cat load.sh
+#!/bin/bash
+
+echo "execution started"
+
+python3 /home/hvr/US174864/lgs_brokerspend_region_country_update.py '239890041447' '/home/hvr/US174864/data/' '/home/hvr/.aws/conf.json' 'lgs_brokerspend_region_country' 'lgsbrokerspendregioncountry' 'isc_box_file_fr' 'lgs_brokerspend_region_country' '503358774@ge.com' '/home/hvr/.aws/redshift_connection.ini' 'Connections_PROD' '239889423994'
+
+echo "execution ended"
+
+===========================================================================
+[hvr@ip-10-242-109-196 US174864]$ cat lgs_brokerspend_region_country_update.py
+import os
+import sys
+import json
+import requests
+import glob
+import time
+import configparser
+import psycopg2
+import sqlalchemy as sa
+from boxsdk import JWTAuth, Client
+from datetime import datetime, timezone, timedelta
+import pandas as pd
+import psycopg2.extras as extras
+
+boxfolderid = sys.argv[1]
+targetpath = sys.argv[2]
+configpath = sys.argv[3]
+patteren = sys.argv[4]
+filename = sys.argv[5]
+schemaname = sys.argv[6]
+tablename = sys.argv[7]
+ingestiondl = sys.argv[8]
+config_path = sys.argv[9]
+connection_profile = sys.argv[10]
+archifolderid = sys.argv[11]
+
+
+def read_config_file(filepath, connection):
+    config = configparser.ConfigParser()
+    config.read(filepath)
+    db_name = config[connection]['dbname']
+    user = config[connection]['user']
+    password = config[connection]['password']
+    host = config[connection]['host']
+    port = int(config[connection]['port'])
+    return db_name, user, password, host, port
+
+
+DBNAME, USER, PASS, HOST, PORT = read_config_file(config_path, connection_profile)
+
+
+def getAccessToBox(JWT_file_path):
+    auth = JWTAuth.from_settings_file(JWT_file_path)
+    client = Client(auth)
+    print("END at", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"), ":", "getAccessToBox")
+    return client
+
+
+def getFileWithChangeName(client, file_id, dest_location, box_folder_id):
+    file_name = client.file(file_id).get().name
+    file_name1 = file_name.lower()
+    x = file_name1.find("brokerspend_")
+    if x != -1:
+        print(file_name)
+        open_file = open(dest_location + file_name, 'wb')
+        client.file(file_id).download_to(open_file)
+        open_file.close()
+        time.sleep(60)
+        with open(dest_location + file_name,encoding='utf-8',errors='ignore') as f:
+            lines_after_17 = f.readlines()
+            lines = lines_after_17
+            print(file_name[:-3])
+            with open(dest_location + file_name[:-3] + 'csv', 'w', encoding='utf-8') as f:
+                f.writelines([str(line) for line in lines])
+            df = pd.read_csv(dest_location + file_name[:-3] + 'csv',
+                             delimiter="\t")
+            df.to_csv(dest_location + file_name[:-3] + 'csv', encoding='utf-8', index=False)
+
+
+def execute_values(conn, df, table):
+    tuples = [tuple(x) for x in df.to_numpy()]
+    cols = ','.join(list(df.columns))
+    # SQL query to execute
+    query = "INSERT INTO %s(%s) VALUES %%s" % (table, cols)
+    cursor = conn.cursor()
+    try:
+        extras.execute_values(cursor, query, tuples)
+        conn.commit()
+    except (Exception, psycopg2.DatabaseError) as error:
+        print("Error: %s" % error)
+        conn.rollback()
+        cursor.close()
+        return 1
+    print("the dataframe is inserted")
+    cursor.close()
+
+
+def getFiles(client, folder_id, Files_Stage_location, file_name_pattern):
+    filesLoaded = list()
+    for item in client.folder(folder_id).get_items():
+        if item.type == "file":
+            getFileWithChangeName(client, item.id, Files_Stage_location, folder_id)
+            filesLoaded.append(item)
+    print("END at", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"), ":", "getFiles")
+    return filesLoaded
+
+
+def move_to_archive(archive_client, file_id, destination_folder_id, filename):
+    file_id = file_id
+    print("main file name :"+filename)
+    destination_folder_id = destination_folder_id
+    for item in archive_client.folder(destination_folder_id).get_items():
+        if item.type == "file":
+            id = item.id
+            file_name = client.file(id).get().name
+            #print("archive file name :" + file_name)
+            if file_name == filename:
+                folderid = item.id
+                archive_client.file(file_id=folderid).delete()
+                print("archive file name :" + file_name)
+                print(folderid)
+    file_to_move = archive_client.file(file_id)
+    destination_folder = archive_client.folder(destination_folder_id)
+    moved_file = file_to_move.move(parent_folder=destination_folder)
+    print(f'File "{moved_file.name}" has been moved into folder "{moved_file.parent.name}"')
+
+if __name__ == "__main__":
+    try:
+        path = targetpath
+        showpadfiles = glob.glob(path + '*.*')
+        for f in showpadfiles:
+            os.remove(f)
+        client = getAccessToBox(configpath)
+        getFiles(client, boxfolderid, targetpath, f'*')
+        os.chdir(targetpath)
+        print(targetpath)
+        for file in glob.glob("*.csv"):
+            print(file)
+            file1 = file[:-4]
+            filename = file[:-3] + 'txt'
+            print(filename)
+            df = pd.read_csv(file)
+            df.columns = df.columns.str.lower()
+            df = df.replace(',', '', regex=True)
+            df.columns = df.columns.str.lower()
+            df.columns = df.columns.str.replace('$', '')
+            df.columns = df.columns.str.replace('#', '')
+            df.columns = df.columns.str.replace('(', '')
+            df.columns = df.columns.str.replace(')', '')
+            df.columns = df.columns.str.replace('  ', '_')
+            df.columns = df.columns.str.replace(' ', '_')
+            df.rename(columns={'ior/bn': 'iorbn'}, inplace=True)
+            df.replace(r'\.0$', '', regex=True)
+            df['data_origin'] = file[:-3] + 'txt'
+            df['posting_agent'] = schemaname
+            df['load_dtm'] = datetime.now()
+            print(df.columns)
+            df = df.where(pd.notnull(df), None)
+            conn = psycopg2.connect(dbname=DBNAME, user=USER, password=PASS, host=HOST, port=PORT)
+            Q1 = f"""delete from {schemaname}.{tablename} where data_origin='{filename}'"""
+            print(Q1)
+            cursor = conn.cursor()
+            cursor.execute(Q1)
+            conn.commit()
+            execute_values(conn, df, schemaname + '.' + tablename)
+            print("Successfully data loaded to RS")
+            folder_id = boxfolderid
+            client = getAccessToBox(configpath)
+            for item in client.folder(folder_id).get_items():
+                if item.type == "file":
+                    file2 = item.name[:-4]
+                    if file2 == file1:
+                        destination_folder_id = archifolderid
+                        move_to_archive(client, item.id, destination_folder_id, item.name)
+    except Exception as e:
+        print("some error occurred while executing")
+        print(e)
+        os.system(
+            f'echo "lgs_brokerspend_region_country" | mailx -s "lgs_brokerspend_region_country" {ingestiondl} ')
